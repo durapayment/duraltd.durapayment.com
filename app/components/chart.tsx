@@ -35,7 +35,7 @@ export default function SalesPerformance() {
   return (
     <div className="max-w-lg ">
       <div className="flex flex-col gap-4">
-        {/* Stats row */}
+        {/* Stats rows */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {stats.map(({ label, value }) => (
             <div key={label}>
