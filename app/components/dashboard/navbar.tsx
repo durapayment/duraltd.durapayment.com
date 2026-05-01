@@ -2,27 +2,41 @@ import { IoMenuOutline } from "react-icons/io5";
 import { LuPanelLeftClose } from "react-icons/lu";
 import { RiNotification4Line, RiSearch2Line } from "react-icons/ri";
 
-export function Navbar({ onMenuClick }: { onMenuClick?: () => void }) {
+export function Navbar({
+  onMenuClick,
+  onSidebarToggle,
+}: {
+  onMenuClick: () => void;
+  onSidebarToggle?: () => void;
+}) {
   return (
-    <nav className="w-full h-16 flex justify-between items-center">
+    <nav className="w-full h-16 flex justify-between items-center px-4 border-b bg-dashboard-background">
       {/* Left */}
       <div className="flex items-center gap-4">
+        {/* Desktop collapse button */}
         <LuPanelLeftClose
-          onClick={onMenuClick}
+          onClick={onSidebarToggle}
           size={20}
-          className="hidden md:flex cursor-pointer"
+          className="hidden md:flex cursor-pointer hover:text-primary"
         />
-        <IoMenuOutline size={22} className="md:hidden cursor-pointer" />
+
+        {/* Mobile Hamburger - Opens Full Screen Drawer */}
+        <IoMenuOutline
+          size={24}
+          className="md:hidden cursor-pointer"
+          onClick={onMenuClick}
+        />
+
         <p className="text-[20px] leading-7 font-bold">Good Morning John</p>
       </div>
 
       {/* Right */}
       <div className="flex items-center gap-4">
-        <div className="h-9 w-9 rounded-full flex items-center justify-center bg-dashboard-hover">
-          <RiSearch2Line />
+        <div className="h-9 w-9 rounded-full flex items-center justify-center bg-dashboard-hover cursor-pointer">
+          <RiSearch2Line size={20} />
         </div>
-        <div className="h-9 w-9 rounded-full flex items-center justify-center bg-dashboard-hover">
-          <RiNotification4Line />
+        <div className="h-9 w-9 rounded-full flex items-center justify-center bg-dashboard-hover cursor-pointer">
+          <RiNotification4Line size={20} />
         </div>
       </div>
     </nav>

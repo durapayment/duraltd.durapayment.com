@@ -3,25 +3,27 @@ import {
   RiArrowUpLongLine,
   RiCalendar2Line,
   RiRefreshLine,
-  RiSearch2Line,
 } from "react-icons/ri";
 import SalesPerformance from "../components/chart";
 import TrafficSource from "../components/dashboard/trafic-source";
+import { Tabs } from "@heroui/react";
+import { TransactionTable } from "../components/dashboard/transaction-table-comp";
+import { CustomersTable } from "../components/dashboard/customer-table-comp";
 
 export default function DashboardPage() {
   return (
     <div className="w-full flex h-full flex-col items-center">
       <div className="max-w-310 flex flex-col gap-4 flex-1 w-full">
         {/* Transaction Date */}
-        <div className="flex w-full  items-center justify-end">
+        <div className="flex w-full items-center justify-between">
           <div className="flex mt-4 w-max items-center gap-3">
-            <div className="h-9 w-9 rounded-full flex items-center justify-center bg-dashboard-hover">
-              <RiRefreshLine />
-            </div>
             <div className="h-9 px-4 gap-3 rounded-full flex items-center justify-center bg-dashboard-hover">
               <RiCalendar2Line className="" color="" />
               <p className="">Monthy</p>
               <RiArrowDownSLine className="" color="" />
+            </div>
+            <div className="h-9 w-9 rounded-full flex items-center justify-center bg-dashboard-hover">
+              <RiRefreshLine />
             </div>
           </div>
         </div>
@@ -31,7 +33,7 @@ export default function DashboardPage() {
           <div className="bg-field-background h-21 rounded-lg p-2 xl:p-3 leading-5 text-[14px] shadow-sm flex flex-col justify-between">
             <p className="opacity-75">Revenue</p>
             <div className="flex items-center justify-between">
-              <p className="leading-8 text-[22px] lg:text-[22px] xl:text-[24px] font-semibold text-black">
+              <p className="leading-8 text-[22px] lg:text-[22px] xl:text-[24px] font-semibold">
                 ₦229,441
               </p>
               <div className="flex items-center text-green-600 rounded-full px-2 py-0.5 gap-0 bg-green-50 ">
@@ -43,7 +45,7 @@ export default function DashboardPage() {
           <div className="bg-field-background h-21 rounded-lg p-2 xl:p-3 leading-5 text-[14px] shadow-sm flex flex-col justify-between">
             <p className="opacity-75">Expenses</p>
             <div className="flex items-center justify-between">
-              <p className="leading-8 text-[22px] lg:text-[22px] xl:text-[24px] font-semibold text-black">
+              <p className="leading-8 text-[22px] lg:text-[22px] xl:text-[24px] font-semibold">
                 ₦25,108
               </p>
               <div className="flex items-center text-red-600 rounded-full px-2 py-0.5 gap-0 bg-red-50 ">
@@ -55,7 +57,7 @@ export default function DashboardPage() {
           <div className="bg-field-background h-21 rounded-lg p-2 xl:p-3 leading-5 text-[14px] shadow-sm flex flex-col justify-between">
             <p className="opacity-75">Sales</p>
             <div className="flex items-center justify-between">
-              <p className="leading-8 text-[22px] lg:text-[22px] xl:text-[24px] font-semibold text-black">
+              <p className="leading-8 text-[22px] lg:text-[22px] xl:text-[24px] font-semibold">
                 458
               </p>
               <div className="flex items-center text-green-600 rounded-full px-2 py-0.5 gap-0 bg-green-50 ">
@@ -67,7 +69,7 @@ export default function DashboardPage() {
           <div className="bg-field-background h-21 rounded-lg p-2 xl:p-3 leading-5 text-[14px] shadow-sm flex flex-col justify-between">
             <p className="opacity-75">Profit</p>
             <div className="flex items-center justify-between">
-              <p className="leading-8 text-[22px] lg:text-[22px] xl:text-[24px] font-semibold text-black">
+              <p className="leading-8 text-[22px] lg:text-[22px] xl:text-[24px] font-semibold">
                 ₦203,133
               </p>
               <div className="flex items-center text-green-600 rounded-full px-2 py-0.5 gap-0 bg-green-50 ">
@@ -125,6 +127,33 @@ export default function DashboardPage() {
             <TrafficSource />
           </div>
         </div>
+
+        {/* Transaction History */}
+        <div className="flex flex-col gap-2">
+          <p className="text-[16px] font-medium">Most Recent</p>
+          <Tabs className="w-full ">
+            <Tabs.ListContainer>
+              <Tabs.List className="max-w-md" aria-label="Options">
+                <Tabs.Tab id="transactions">
+                  Transactions
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+                <Tabs.Tab className="max-w-md" id="customers">
+                  Customers
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+              </Tabs.List>
+            </Tabs.ListContainer>
+            <Tabs.Panel className="pt-4" id="transactions">
+              <TransactionTable />
+            </Tabs.Panel>
+            <Tabs.Panel className="pt-4" id="customers">
+              <CustomersTable />
+            </Tabs.Panel>
+          </Tabs>
+        </div>
+
+        <div className="h-5"></div>
       </div>
     </div>
   );

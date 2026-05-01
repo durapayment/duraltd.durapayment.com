@@ -49,10 +49,10 @@ export default function TrafficSource() {
   return (
     <div className="flex flex-col gap-4">
       {/* Stat */}
-      <div>
+      {/* <div>
         <p className="text-lg text-gray-900">231,856</p>
         <p className="text-xs text-gray-400 mt-0.5">Sessions</p>
-      </div>
+      </div> */}
 
       {/* Chart */}
       <ResponsiveContainer width="100%" height={200}>

@@ -9,26 +9,52 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Desktop sidebar
+
+  const toggleDrawer = () => setIsDrawerOpen((prev) => !prev);
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
   return (
-    <div className="h-svh flex flex-col bg-dashboard-background text-dashboard-foreground overflow-hidden">
+    <div className="h-svh flex flex-col bg-dashboard-background overflow-hidden">
       <div className="flex flex-1 relative overflow-hidden">
-        {/* Sidebar */}
+        {/* ====================== DESKTOP SIDEBAR ====================== */}
         <div
-          className={`absolute inset-y-0 left-0 z-20 h-full  transition-transform duration-300 ease-in-out ${
-            isOpen ? "md:translate-x-0 -translate-x-full" : "-translate-x-full"
+          className={`hidden md:block h-full border-r transition-all duration-300 ease-in-out ${
+            isSidebarOpen ? "w-60" : "w-0 overflow-hidden"
           }`}
         >
           <AsideBar />
         </div>
 
-        {/* Main content */}
+        {/* ====================== MOBILE DRAWER ====================== */}
+        {/* Backdrop */}
+        {isDrawerOpen && (
+          <div
+            className="md:hidden fixed inset-0 bg-black/60 z-30 transition-opacity"
+            onClick={() => setIsDrawerOpen(false)}
+          />
+        )}
+
+        {/* Drawer */}
         <div
-          className={`flex-1 ${isOpen ? "md:ml-64" : "ml-0"} px-4 flex flex-col h-full transition-all duration-300 ease-in-out`}
+          className={`fixed inset-y-0 left-0 z-40 w-72 bg-white dark:bg-gray-950 border-r shadow-xl transform transition-transform duration-300 ease-in-out md:hidden ${
+            isDrawerOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
         >
-          <Navbar onMenuClick={() => setIsOpen((prev) => !prev)} />
-          <main className="flex-1 scrollbar-hide overflow-y-auto">
+          <AsideBar onClose={() => setIsDrawerOpen(false)} />
+        </div>
+
+        {/* ====================== MAIN CONTENT ====================== */}
+        <div
+          className={`flex-1 flex flex-col h-full transition-all duration-300 `}
+        >
+          <Navbar
+            onMenuClick={toggleDrawer} // Mobile: opens drawer
+            onSidebarToggle={toggleSidebar} // Desktop: collapses sidebar
+          />
+
+          <main className="flex-1 overflow-y-auto scrollbar-hide p-4">
             {children}
           </main>
         </div>

@@ -36,7 +36,7 @@ export default function SalesPerformance() {
     <div className="max-w-lg ">
       <div className="flex flex-col gap-4">
         {/* Stats rows */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {/* <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {stats.map(({ label, value }) => (
             <div key={label}>
               <div className="flex items-center gap-1.5">
@@ -48,7 +48,7 @@ export default function SalesPerformance() {
               <span className="text-gray-400 text-xs">{label}</span>
             </div>
           ))}
-        </div>
+        </div> */}
 
         {/* Chart */}
         <ResponsiveContainer width="100%" height={180}>
