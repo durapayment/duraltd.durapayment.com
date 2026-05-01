@@ -309,13 +309,13 @@ export default function Settings() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={clsx(
-                "flex items-center gap-2 pb-4 border-b-2 transition-all",
+                "flex items-center flex-wrap gap-2 pb-4 border-b-2 transition-all",
                 activeTab === tab.id
                   ? "border-accent text-accent"
                   : "border-transparent text-gray-500 hover:text-gray-700",
               )}
             >
-              <tab.icon size={18} />
+              {/* <tab.icon size={18} /> */}
               {tab.label}
             </button>
           ))}
@@ -520,7 +520,7 @@ export default function Settings() {
               </h3>
               <div className="space-y-4">
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span>Email Notifications</span>
+                  <span className="text-[15px]">Email Notifications</span>
                   <input
                     type="checkbox"
                     checked={preferencesForm.receive_email_notifications}
@@ -530,11 +530,11 @@ export default function Settings() {
                         receive_email_notifications: e.target.checked,
                       }))
                     }
-                    className="w-5 h-5 accent-acborder-accent"
+                    className="w-4 h-4 accent-acborder-accent"
                   />
                 </label>
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span>SMS Notifications</span>
+                  <span className="text-[15px]">SMS Notifications</span>
                   <input
                     type="checkbox"
                     checked={preferencesForm.receive_sms_notifications}
@@ -544,7 +544,7 @@ export default function Settings() {
                         receive_sms_notifications: e.target.checked,
                       }))
                     }
-                    className="w-5 h-5 accent-acborder-accent"
+                    className="w-4 h-4 accent-acborder-accent"
                   />
                 </label>
               </div>
@@ -563,14 +563,14 @@ export default function Settings() {
                       setPreferencesForm((prev) => ({ ...prev, theme }))
                     }
                     className={clsx(
-                      "flex-1 py-4 rounded-2xl border text-sm font-medium transition-all",
+                      "flex-1 py-2 rounded-2xl border text-sm font-medium transition-all",
                       preferencesForm.theme === theme
                         ? "border-accent bg-violet-50 text-accent"
                         : "border-gray-200 hover:border-gray-300",
                     )}
                   >
                     {theme === "system"
-                      ? "System Default"
+                      ? "System"
                       : theme.charAt(0).toUpperCase() + theme.slice(1)}
                   </button>
                 ))}
