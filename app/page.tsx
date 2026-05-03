@@ -69,7 +69,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className="px-5 md:px-20 flex flex-col flex-1 py-5 md:py-7 min-h-screen bg-cover bg-center bg-no-repeat"
+      className="px-5 md:px-20 flex flex-col flex-1 py-5 md:py-7  bg-cover bg-center bg-no-repeat"
       // style={{ backgroundImage: "url('./login-bg.png')" }}
     >
       {/* Header */}
@@ -203,7 +203,7 @@ export default function LoginPage() {
         </div>
 
         {/* Submit */}
-        <div className="flex max-w-154 px-0 md:px-10 w-full flex-col mb-10 md:mb-0 md:mt-3 gap-2">
+        <div className="flex max-w-154 px-0 md:px-10 w-full flex-col md:mb-0 md:mt-3 gap-2">
           <Button title="Login" action={handleSubmit} isLoading={isLoading} />
           <p className="text-center text-sm">
             Don't have an account?{" "}
