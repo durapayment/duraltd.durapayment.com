@@ -5,7 +5,7 @@ import { Button } from "./components/button";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  // Router for navigation
+  // Router for navigations
   const router = useRouter();
 
   const [formData, setFormData] = useState({ email: "", password: "" });
