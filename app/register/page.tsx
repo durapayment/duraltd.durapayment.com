@@ -1202,7 +1202,7 @@ export default function RegisterPage() {
                   isDisabled={otp.length !== 6}
                   className={"rounded-sm text-white px-8 py-5"}
                   slot="close"
-                  isPending={otpVerifying}
+                  // isPending={otpVerifying}
                   onPress={() => handleVerifyOtp()}
                 >
                   Verify
