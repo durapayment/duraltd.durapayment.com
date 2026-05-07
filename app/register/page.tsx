@@ -619,6 +619,7 @@ export default function RegisterPage() {
       // Simulate if NEXT_PUBLIC_IS_DEVELOPMENT=true
       if (process.env.NEXT_PUBLIC_IS_DEVELOPMENT === "true") {
         await new Promise((res) => setTimeout(res, 1000));
+        setEmailVerifying(false);
         setIsModalOpen(true);
         return;
       }
@@ -648,7 +649,7 @@ export default function RegisterPage() {
       }
 
       setEmailVerifying(false);
-      setIsModalOpen(false);
+      setIsModalOpen(true);
     } catch (error) {
       setErrors((prev) => ({
         ...prev,
