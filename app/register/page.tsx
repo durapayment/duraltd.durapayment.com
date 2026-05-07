@@ -728,6 +728,7 @@ export default function RegisterPage() {
 
   const handleCancelOtp = () => {
     setOtp("");
+    errors.emailotp = "";
     setIsModalOpen(false);
     setOtpVerifying(false);
     setEmailVerified(false);
