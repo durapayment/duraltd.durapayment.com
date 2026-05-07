@@ -50,6 +50,7 @@ interface Step1Errors {
   accountType: string;
   referral: string;
   business_name: string;
+  emailotp: string;
 }
 
 interface Step2Errors {
@@ -511,6 +512,7 @@ export default function RegisterPage() {
     accountType: "",
     referral: "",
     business_name: "",
+    emailotp: "",
   });
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -703,7 +705,7 @@ export default function RegisterPage() {
       if (!response.ok) {
         setErrors((prev) => ({
           ...prev,
-          email:
+          emailotp:
             result.message || "Email verification failed. Please try again.",
         }));
         return;
@@ -717,7 +719,7 @@ export default function RegisterPage() {
     } catch (error) {
       setErrors((prev) => ({
         ...prev,
-        email: "Network error. Please check your connection and try again.",
+        emailotp: "Network error. Please check your connection and try again.",
       }));
     } finally {
       setEmailVerifying(false);
@@ -750,6 +752,7 @@ export default function RegisterPage() {
       accountType: validateField("accountType", formData.accountType),
       referral: "",
       business_name: "",
+      emailotp: "",
     };
     setErrors(newErrors);
     if (Object.values(newErrors).some(Boolean)) return;
@@ -1189,6 +1192,11 @@ export default function RegisterPage() {
                         maxLength={6}
                         className="w-full text-sm text-black focus:outline-none"
                       />
+                      {errors.emailotp && (
+                        <p className="text-[12px] text-red-500 mt-1">
+                          {errors.emailotp}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
