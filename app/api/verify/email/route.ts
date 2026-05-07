@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     // Forward registration to Laravel
     const response = await fetch(
-      `${process.env.LARAVEL_API_URL}/api/verify/email/${encodeURIComponent(email)}`,
+      `${process.env.LARAVEL_API_URL}/api/verify/email`,
       {
         method: "POST",
         headers: {
