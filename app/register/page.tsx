@@ -517,6 +517,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [emailVerifying, setEmailVerifying] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
   const [businessName, setBusinessName] = useState("");
 
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -548,6 +549,12 @@ export default function RegisterPage() {
     if (!val) return "Email is required.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val))
       return "Enter a valid email address.";
+    return "";
+  };
+
+  const validateOtp = (val: string) => {
+    if (!val) return "OTP is required.";
+    if (!/^\d{6}$/.test(val)) return "OTP must be 6 digits.";
     return "";
   };
 
@@ -609,6 +616,13 @@ export default function RegisterPage() {
     setEmailVerifying(true);
 
     try {
+      // Simulate if NEXT_PUBLIC_IS_DEVELOPMENT=true
+      if (process.env.NEXT_PUBLIC_IS_DEVELOPMENT === "true") {
+        await new Promise((res) => setTimeout(res, 1000));
+        setIsModalOpen(true);
+        return;
+      }
+
       // Make API Call.
       const response = await fetch("/api/verify/email", {
         method: "POST",
@@ -634,8 +648,74 @@ export default function RegisterPage() {
       }
 
       setEmailVerifying(false);
-      // setEmailVerified(true);
-      setIsModalOpen(true);
+      setIsModalOpen(false);
+    } catch (error) {
+      setErrors((prev) => ({
+        ...prev,
+        email: "Network error. Please check your connection and try again.",
+      }));
+    } finally {
+      setEmailVerifying(false);
+    }
+  };
+
+  const handleValidateOtp = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (/^\d*$/.test(value) && value.length <= 6) {
+      setOtp(value);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const err = validateEmail(formData.email);
+    if (err) {
+      setErrors((prev) => ({ ...prev, email: err }));
+      return;
+    }
+    const otpErr = validateOtp(otp);
+    if (otpErr) {
+      setErrors((prev) => ({ ...prev, otp: otpErr }));
+      return;
+    }
+    setOtpVerifying(true);
+
+    try {
+      // Simulate if NEXT_PUBLIC_IS_DEVELOPMENT=true
+      if (process.env.NEXT_PUBLIC_IS_DEVELOPMENT === "true") {
+        await new Promise((res) => setTimeout(res, 1000));
+        setEmailVerified(true);
+        setIsModalOpen(false);
+        return;
+      }
+
+      // Make API Call.
+      const response = await fetch("/api/verify/email/otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          email: formData.email,
+          otp: otp,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setErrors((prev) => ({
+          ...prev,
+          email:
+            result.message || "Email verification failed. Please try again.",
+        }));
+        return;
+      }
+
+      setEmailVerifying(false);
+      setEmailVerified(true);
+      setIsModalOpen(false);
     } catch (error) {
       setErrors((prev) => ({
         ...prev,
@@ -1121,7 +1201,8 @@ export default function RegisterPage() {
                   isDisabled={otp.length !== 6}
                   className={"rounded-sm text-white px-8 py-5"}
                   slot="close"
-                  onPress={() => handleVerifyEmail()}
+                  isPending={otpVerifying}
+                  onPress={() => handleVerifyOtp()}
                 >
                   Verify
                 </HeroButton>
