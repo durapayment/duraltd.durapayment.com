@@ -1186,18 +1186,23 @@ export default function RegisterPage() {
                         inputMode="numeric"
                         pattern="\d*"
                         name="emailotp"
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value)}
+                        value={formData.emailotp}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            emailotp: e.target.value,
+                          }))
+                        }
                         autoComplete="one-time-code"
                         maxLength={6}
                         className="w-full text-sm text-black focus:outline-none"
                       />
-                      {errors.emailotp && (
-                        <p className="text-[12px] text-red-500 mt-1">
-                          {errors.emailotp}
-                        </p>
-                      )}
                     </div>
+                    {errors.emailotp && (
+                      <p className="text-[12px] text-red-500 mt-1">
+                        {errors.emailotp}
+                      </p>
+                    )}
                   </div>
                 </div>
               </Modal.Body>
@@ -1211,7 +1216,7 @@ export default function RegisterPage() {
                   Cancel
                 </HeroButton>
                 <HeroButton
-                  isDisabled={otp.length !== 6}
+                  isDisabled={formData.emailotp.length !== 6}
                   className={"rounded-sm text-white px-8 py-5"}
                   slot="close"
                   isPending={otpVerifying}
