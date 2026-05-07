@@ -22,7 +22,6 @@ import { IoMdClose } from "react-icons/io";
 import { HiEye, HiEyeOff } from "react-icons/hi";
 import { useRouter } from "next/navigation";
 import { FaRocket } from "react-icons/fa";
-import { Divide } from "lucide-react";
 
 type AccountType = "individual" | "business" | "";
 
@@ -38,7 +37,6 @@ interface Step1Data {
 interface Step2Data {
   firstName: string;
   lastName: string;
-  businessName: string;
   phone: string;
   password: string;
   confirmPassword: string;
@@ -56,7 +54,6 @@ interface Step1Errors {
 interface Step2Errors {
   firstName: string;
   lastName: string;
-  businessName: string;
   phone: string;
   password: string;
   confirmPassword: string;
@@ -79,59 +76,16 @@ const COUNTRIES = [
 
 interface Step2Props {
   accountType: AccountType;
+  step1Data: Step1Data; // ← receive full Step 1 data
   onBack: () => void;
 }
 
-function BackdropVariants({
-  isOpen,
-  body,
-}: {
-  isOpen: boolean;
-  body?: React.ReactNode;
-}) {
-  const variants = ["opaque", "blur", "transparent"] as const;
-  return (
-    <Modal isOpen={isOpen}>
-      <Modal.Backdrop>
-        <Modal.Container className={"w-full"} size="lg" placement="top">
-          <Modal.Dialog>
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Icon className="bg-accent-soft text-accent-soft-foreground">
-                <RiInformation2Line size={24} />
-              </Modal.Icon>
-              <Modal.Heading className="font-black mt-2 text-[18px]">
-                Enter OTP
-              </Modal.Heading>
-            </Modal.Header>
-            <Modal.Body>{body}</Modal.Body>
-            <Modal.Footer className="mt-6">
-              <HeroButton
-                className={"rounded-sm px-8 py-5"}
-                slot="close"
-                variant="outline"
-              >
-                Cancel
-              </HeroButton>
-              <HeroButton className={"rounded-sm px-8 py-5"} slot="close">
-                Save
-              </HeroButton>
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
-  );
-}
-
-function Step2({ accountType, onBack }: Step2Props) {
-  // useRouter
+function Step2({ accountType, step1Data, onBack }: Step2Props) {
   const router = useRouter();
 
   const [formData, setFormData] = useState<Step2Data>({
     firstName: "",
     lastName: "",
-    businessName: "",
     phone: "",
     password: "",
     confirmPassword: "",
@@ -140,7 +94,6 @@ function Step2({ accountType, onBack }: Step2Props) {
   const [errors, setErrors] = useState<Step2Errors>({
     firstName: "",
     lastName: "",
-    businessName: "",
     phone: "",
     password: "",
     confirmPassword: "",
@@ -150,8 +103,6 @@ function Step2({ accountType, onBack }: Step2Props) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-
-  const isBusiness = accountType === "business";
 
   const handleChange = (field: keyof Step2Data, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -166,8 +117,6 @@ function Step2({ accountType, onBack }: Step2Props) {
         return value.trim() ? "" : "First name is required.";
       case "lastName":
         return value.trim() ? "" : "Last name is required.";
-      case "businessName":
-        return isBusiness && !value.trim() ? "Business name is required." : "";
       case "phone":
         if (!value.trim()) return "Phone number is required.";
         if (!/^\+?[0-9\s\-()]{7,15}$/.test(value))
@@ -208,22 +157,12 @@ function Step2({ accountType, onBack }: Step2Props) {
   const strength = getPasswordStrength(formData.password);
 
   const handleSubmit = async () => {
-    const fields: (keyof Step2Data)[] = [
-      "firstName",
-      "lastName",
-      "phone",
-      "password",
-      "confirmPassword",
-    ];
-    if (isBusiness) fields.splice(2, 0, "businessName");
-
     const newErrors = {} as Step2Errors;
     let hasError = false;
 
     for (const field of [
       "firstName",
       "lastName",
-      "businessName",
       "phone",
       "password",
       "confirmPassword",
@@ -238,10 +177,56 @@ function Step2({ accountType, onBack }: Step2Props) {
 
     setIsLoading(true);
     try {
-      await new Promise((res) => setTimeout(res, 2000));
-      setSuccess(true);
+      const response = await fetch("/api/auth", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          // Step 2 fields
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone_number: formData.phone,
+          password: formData.password,
 
-      // Redirect here
+          // Step 1 fields passed through
+          business_type: step1Data.accountType,
+          country: step1Data.country,
+          email: step1Data.email,
+          business_name: step1Data.business_name,
+          referral: step1Data.referral,
+        }),
+      });
+
+      const result = await response.json();
+      console.log("Registration response:", result);
+
+      if (!response.ok) {
+        if (result.errors) {
+          const apiErrors: Partial<Step2Errors> = {};
+          for (const key in result.errors) {
+            if (key === "first_name")
+              apiErrors.firstName = result.errors[key][0];
+            else if (key === "last_name")
+              apiErrors.lastName = result.errors[key][0];
+            else if (key === "phone_number")
+              apiErrors.phone = result.errors[key][0];
+            else if (key === "password")
+              apiErrors.password = result.errors[key][0];
+          }
+          // setErrors(apiErrors);
+        } else {
+          setErrors((prev) => ({
+            ...prev,
+            phone: result.message || "Registration failed. Please try again.",
+          }));
+        }
+        return;
+      }
+
+      setSuccess(true);
       router.push("/dashboard");
     } catch {
       setErrors((prev) => ({
@@ -263,11 +248,13 @@ function Step2({ accountType, onBack }: Step2Props) {
           Fill in your details to complete account setup.
         </p>
       </div>
+
       {success && (
         <div className="rounded-md bg-green-50 border border-green-300 px-4 py-3 text-sm text-green-800">
           🎉 Account created successfully! Redirecting you to your dashboard...
         </div>
       )}
+
       {/* First Name + Last Name */}
       <div className="flex gap-3 w-full">
         <div className="flex flex-col gap-1 flex-1">
@@ -317,35 +304,7 @@ function Step2({ accountType, onBack }: Step2Props) {
           )}
         </div>
       </div>
-      {/* Business Name — only for business account type */}
-      {isBusiness && (
-        <div className="flex flex-col gap-1 w-full">
-          <p className="text-[13px]">Business Name</p>
-          <input
-            type="text"
-            value={formData.businessName}
-            onChange={(e) => handleChange("businessName", e.target.value)}
-            onBlur={() =>
-              setErrors((prev) => ({
-                ...prev,
-                businessName: validateField(
-                  "businessName",
-                  formData.businessName,
-                ),
-              }))
-            }
-            placeholder="Acme Corp Ltd."
-            className={`rounded-md border bg-white px-3 py-3 text-sm text-black focus:outline-none transition-all ${
-              errors.businessName
-                ? "border-red-400 ring-1 ring-red-200"
-                : "border-neutral-300 focus:border-secondary focus:ring-1 focus:ring-secondary/10"
-            }`}
-          />
-          {errors.businessName && (
-            <p className="text-[12px] text-red-500">{errors.businessName}</p>
-          )}
-        </div>
-      )}
+
       {/* Phone Number */}
       <div className="flex flex-col gap-1 w-full">
         <p className="text-[13px]">Phone Number</p>
@@ -356,7 +315,6 @@ function Step2({ accountType, onBack }: Step2Props) {
               : "border-neutral-300 focus-within:border-secondary focus-within:ring-1 focus-within:ring-secondary/10"
           }`}
         >
-          {/* Simple flag/code prefix — can be replaced with a full selector */}
           <span className="text-sm text-neutral-500 border-r border-neutral-200 pr-2 mr-1 whitespace-nowrap">
             🇳🇬 +234
           </span>
@@ -378,6 +336,7 @@ function Step2({ accountType, onBack }: Step2Props) {
           <p className="text-[12px] text-red-500">{errors.phone}</p>
         )}
       </div>
+
       {/* Password */}
       <div className="flex flex-col gap-1 w-full">
         <p className="text-[13px]">Password</p>
@@ -410,7 +369,6 @@ function Step2({ accountType, onBack }: Step2Props) {
           </button>
         </div>
 
-        {/* Strength bar */}
         {formData.password && (
           <div className="mt-1.5 flex flex-col gap-1">
             <div className="h-1 w-full rounded-full bg-neutral-100 overflow-hidden">
@@ -432,6 +390,7 @@ function Step2({ accountType, onBack }: Step2Props) {
           <p className="text-[12px] text-red-500">{errors.password}</p>
         )}
       </div>
+
       {/* Confirm Password */}
       <div className="flex flex-col gap-1 w-full">
         <p className="text-[13px]">Confirm Password</p>
@@ -470,6 +429,7 @@ function Step2({ accountType, onBack }: Step2Props) {
           <p className="text-[12px] text-red-500">{errors.confirmPassword}</p>
         )}
       </div>
+
       {/* Actions */}
       <div className="flex flex-col mt-4 gap-4">
         <Button
@@ -520,7 +480,6 @@ export default function RegisterPage() {
   const [emailVerified, setEmailVerified] = useState(false);
   const [emailVerifying, setEmailVerifying] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
-  const [businessName, setBusinessName] = useState("");
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -560,7 +519,9 @@ export default function RegisterPage() {
     return "";
   };
 
-  const validateBusinessName = (val: string) => {
+  const validateBusinessName = (val: string, accountType: AccountType) => {
+    if (accountType === "business" && !val.trim())
+      return "Business name is required for registered business accounts.";
     return "";
   };
 
@@ -572,6 +533,8 @@ export default function RegisterPage() {
         return validateEmail(value);
       case "accountType":
         return value ? "" : "Please select an account type.";
+      case "business_name":
+        return validateBusinessName(value, formData.accountType);
       default:
         return "";
     }
@@ -586,14 +549,13 @@ export default function RegisterPage() {
     }
   };
 
-  // Business Name
   const handleBusinessNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setFormData((prev) => ({ ...prev, business_name: value }));
     if (errors.business_name) {
       setErrors((prev) => ({
         ...prev,
-        business_name: validateBusinessName(value),
+        business_name: validateBusinessName(value, formData.accountType),
       }));
     }
   };
@@ -605,7 +567,10 @@ export default function RegisterPage() {
   const handleBusinessNameBlur = () => {
     setErrors((prev) => ({
       ...prev,
-      business_name: validateBusinessName(formData.business_name),
+      business_name: validateBusinessName(
+        formData.business_name,
+        formData.accountType,
+      ),
     }));
   };
 
@@ -618,15 +583,6 @@ export default function RegisterPage() {
     setEmailVerifying(true);
 
     try {
-      // Simulate if NEXT_PUBLIC_IS_DEVELOPMENT=true
-      if (process.env.NEXT_PUBLIC_IS_DEVELOPMENT === "true") {
-        await new Promise((res) => setTimeout(res, 1000));
-        setEmailVerifying(false);
-        setIsModalOpen(true);
-        return;
-      }
-
-      // Make API Call.
       const response = await fetch("/api/verify/email", {
         method: "POST",
         headers: {
@@ -634,9 +590,7 @@ export default function RegisterPage() {
           Accept: "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({
-          email: formData.email,
-        }),
+        body: JSON.stringify({ email: formData.email }),
       });
 
       const result = await response.json();
@@ -651,7 +605,6 @@ export default function RegisterPage() {
       }
 
       setOtp("");
-      setEmailVerifying(false);
       setIsModalOpen(true);
     } catch (error) {
       setErrors((prev) => ({
@@ -671,22 +624,12 @@ export default function RegisterPage() {
     }
     const otpErr = validateOtp(otp);
     if (otpErr) {
-      setErrors((prev) => ({ ...prev, otp: otpErr }));
+      setErrors((prev) => ({ ...prev, emailotp: otpErr }));
       return;
     }
     setOtpVerifying(true);
 
     try {
-      // Simulate if NEXT_PUBLIC_IS_DEVELOPMENT=true
-      if (process.env.NEXT_PUBLIC_IS_DEVELOPMENT === "true") {
-        await new Promise((res) => setTimeout(res, 1000));
-        setEmailVerified(true);
-        setIsModalOpen(false);
-        setOtpVerifying(false);
-        return;
-      }
-
-      // Make API Call.
       const response = await fetch("/api/verify/email/otp", {
         method: "POST",
         headers: {
@@ -694,10 +637,7 @@ export default function RegisterPage() {
           Accept: "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({
-          email: formData.email,
-          otp: otp,
-        }),
+        body: JSON.stringify({ email: formData.email, otp }),
       });
 
       const result = await response.json();
@@ -706,15 +646,13 @@ export default function RegisterPage() {
         setErrors((prev) => ({
           ...prev,
           emailotp:
-            result.message || "Email verification failed. Please try again.",
+            result.message || "OTP verification failed. Please try again.",
         }));
         return;
       }
 
-      setEmailVerifying(false);
       setOtp("");
       setEmailVerified(true);
-      setOtpVerifying(false);
       setIsModalOpen(false);
     } catch (error) {
       setErrors((prev) => ({
@@ -722,13 +660,13 @@ export default function RegisterPage() {
         emailotp: "Network error. Please check your connection and try again.",
       }));
     } finally {
-      setEmailVerifying(false);
+      setOtpVerifying(false);
     }
   };
 
   const handleCancelOtp = () => {
     setOtp("");
-    errors.emailotp = "";
+    setErrors((prev) => ({ ...prev, emailotp: "" }));
     setIsModalOpen(false);
     setOtpVerifying(false);
     setEmailVerified(false);
@@ -744,6 +682,10 @@ export default function RegisterPage() {
   const handleSelectAccountType = (type: AccountType) => {
     setFormData((prev) => ({ ...prev, accountType: type }));
     setErrors((prev) => ({ ...prev, accountType: "" }));
+    // Re-validate business_name when account type changes
+    if (type === "individual") {
+      setErrors((prev) => ({ ...prev, business_name: "" }));
+    }
   };
 
   const handleStep1Submit = async () => {
@@ -752,7 +694,10 @@ export default function RegisterPage() {
       email: validateField("email", formData.email),
       accountType: validateField("accountType", formData.accountType),
       referral: "",
-      business_name: "",
+      business_name: validateBusinessName(
+        formData.business_name,
+        formData.accountType,
+      ),
       emailotp: "",
     };
     setErrors(newErrors);
@@ -767,7 +712,7 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true);
-    await new Promise((res) => setTimeout(res, 600)); // brief transition feel
+    await new Promise((res) => setTimeout(res, 600));
     setIsLoading(false);
     setStep(2);
   };
@@ -990,7 +935,12 @@ export default function RegisterPage() {
 
             {/* Business Name */}
             <div className="flex flex-col gap-1 w-full">
-              <p className="text-[13px]">Business Name</p>
+              <p className="text-[13px]">
+                Business Name{" "}
+                {formData.accountType !== "business" && (
+                  <span className="text-neutral-400">(Optional)</span>
+                )}
+              </p>
               <div
                 className={`flex items-center gap-2 rounded-md border bg-white px-3 py-3 transition-all ${
                   errors.business_name
@@ -1151,7 +1101,11 @@ export default function RegisterPage() {
             </div>
           </div>
         ) : (
-          <Step2 accountType={formData.accountType} onBack={() => setStep(1)} />
+          <Step2
+            accountType={formData.accountType}
+            step1Data={formData} // ← pass full Step 1 data
+            onBack={() => setStep(1)}
+          />
         )}
       </div>
 
@@ -1179,9 +1133,7 @@ export default function RegisterPage() {
                     <p className="text-sm text-black opacity-80">
                       Enter confirmation code
                     </p>
-                    <div
-                      className={`flex items-center gap-2 rounded-md border bg-white px-3 py-3 transition-all`}
-                    >
+                    <div className="flex items-center gap-2 rounded-md border bg-white px-3 py-3 transition-all">
                       <input
                         type="text"
                         inputMode="numeric"

@@ -4,6 +4,27 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // Validate required fields
+    const requiredFields = [
+      "first_name",
+      "last_name",
+      "phone_number",
+      "password",
+      "business_type",
+      "country",
+      "email",
+      "business_name",
+    ];
+
+    for (const field of requiredFields) {
+      if (!body[field]) {
+        return NextResponse.json(
+          { status: 400, message: `Missing required field: ${field}` },
+          { status: 400 },
+        );
+      }
+    }
+
     // Get CSRF cookie first
     await fetch(`${process.env.LARAVEL_API_URL}/sanctum/csrf-cookie`, {
       credentials: "include",
