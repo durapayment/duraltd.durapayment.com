@@ -120,7 +120,7 @@ export default function LoginPage() {
       <div className="flex mt-0 md:mt-10 flex-1 flex-col justify-between md:justify-start items-center">
         <div className="max-w-154 w-full flex flex-col gap-8 px-0 md:px-10 py-10">
           <div className="flex flex-col gap-1">
-            <p className="text-[28px] leading-8 font-semibold">Welcome backs</p>
+            <p className="text-[28px] leading-8 font-semibold">Welcome back</p>
             <p className="text-[13px]">
               Sign in to continue to your Dura Payment account.
             </p>
