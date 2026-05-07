@@ -1,17 +1,28 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { BsFileEarmarkPerson } from "react-icons/bs";
 import { MdOutlineBusiness } from "react-icons/md";
 import {
   RiCheckboxCircleLine,
   RiCheckboxBlankCircleLine,
+  RiInformation2Line,
 } from "react-icons/ri";
 import { Button } from "../components/button";
 import Link from "next/link";
-import { ProgressBar } from "@heroui/react";
+import {
+  Button as HeroButton,
+  Input,
+  Label,
+  Modal,
+  ProgressBar,
+  Surface,
+  TextField,
+} from "@heroui/react";
 import { IoMdClose } from "react-icons/io";
 import { HiEye, HiEyeOff } from "react-icons/hi";
 import { useRouter } from "next/navigation";
+import { FaRocket } from "react-icons/fa";
+import { Divide } from "lucide-react";
 
 type AccountType = "individual" | "business" | "";
 
@@ -20,6 +31,8 @@ interface Step1Data {
   email: string;
   accountType: AccountType;
   referral: string;
+  business_name: string;
+  emailotp: string;
 }
 
 interface Step2Data {
@@ -36,6 +49,7 @@ interface Step1Errors {
   email: string;
   accountType: string;
   referral: string;
+  business_name: string;
 }
 
 interface Step2Errors {
@@ -65,6 +79,48 @@ const COUNTRIES = [
 interface Step2Props {
   accountType: AccountType;
   onBack: () => void;
+}
+
+function BackdropVariants({
+  isOpen,
+  body,
+}: {
+  isOpen: boolean;
+  body?: React.ReactNode;
+}) {
+  const variants = ["opaque", "blur", "transparent"] as const;
+  return (
+    <Modal isOpen={isOpen}>
+      <Modal.Backdrop>
+        <Modal.Container className={"w-full"} size="lg" placement="top">
+          <Modal.Dialog>
+            <Modal.CloseTrigger />
+            <Modal.Header>
+              <Modal.Icon className="bg-accent-soft text-accent-soft-foreground">
+                <RiInformation2Line size={24} />
+              </Modal.Icon>
+              <Modal.Heading className="font-black mt-2 text-[18px]">
+                Enter OTP
+              </Modal.Heading>
+            </Modal.Header>
+            <Modal.Body>{body}</Modal.Body>
+            <Modal.Footer className="mt-6">
+              <HeroButton
+                className={"rounded-sm px-8 py-5"}
+                slot="close"
+                variant="outline"
+              >
+                Cancel
+              </HeroButton>
+              <HeroButton className={"rounded-sm px-8 py-5"} slot="close">
+                Save
+              </HeroButton>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+    </Modal>
+  );
 }
 
 function Step2({ accountType, onBack }: Step2Props) {
@@ -206,13 +262,11 @@ function Step2({ accountType, onBack }: Step2Props) {
           Fill in your details to complete account setup.
         </p>
       </div>
-
       {success && (
         <div className="rounded-md bg-green-50 border border-green-300 px-4 py-3 text-sm text-green-800">
           🎉 Account created successfully! Redirecting you to your dashboard...
         </div>
       )}
-
       {/* First Name + Last Name */}
       <div className="flex gap-3 w-full">
         <div className="flex flex-col gap-1 flex-1">
@@ -262,7 +316,6 @@ function Step2({ accountType, onBack }: Step2Props) {
           )}
         </div>
       </div>
-
       {/* Business Name — only for business account type */}
       {isBusiness && (
         <div className="flex flex-col gap-1 w-full">
@@ -292,7 +345,6 @@ function Step2({ accountType, onBack }: Step2Props) {
           )}
         </div>
       )}
-
       {/* Phone Number */}
       <div className="flex flex-col gap-1 w-full">
         <p className="text-[13px]">Phone Number</p>
@@ -325,7 +377,6 @@ function Step2({ accountType, onBack }: Step2Props) {
           <p className="text-[12px] text-red-500">{errors.phone}</p>
         )}
       </div>
-
       {/* Password */}
       <div className="flex flex-col gap-1 w-full">
         <p className="text-[13px]">Password</p>
@@ -380,7 +431,6 @@ function Step2({ accountType, onBack }: Step2Props) {
           <p className="text-[12px] text-red-500">{errors.password}</p>
         )}
       </div>
-
       {/* Confirm Password */}
       <div className="flex flex-col gap-1 w-full">
         <p className="text-[13px]">Confirm Password</p>
@@ -419,7 +469,6 @@ function Step2({ accountType, onBack }: Step2Props) {
           <p className="text-[12px] text-red-500">{errors.confirmPassword}</p>
         )}
       </div>
-
       {/* Actions */}
       <div className="flex flex-col mt-4 gap-4">
         <Button
@@ -443,13 +492,17 @@ function Step2({ accountType, onBack }: Step2Props) {
 // ─── Main Register Page ───────────────────────────────────────────────────────
 
 export default function RegisterPage() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
-
+  const [otp, setOtp] = useState("");
   const [formData, setFormData] = useState<Step1Data>({
     country: "",
     email: "",
     accountType: "",
     referral: "",
+    business_name: "",
+    emailotp: "",
   });
 
   const [errors, setErrors] = useState<Step1Errors>({
@@ -457,13 +510,14 @@ export default function RegisterPage() {
     email: "",
     accountType: "",
     referral: "",
+    business_name: "",
   });
 
-  const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [emailVerifying, setEmailVerifying] = useState(false);
+  const [businessName, setBusinessName] = useState("");
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -497,6 +551,10 @@ export default function RegisterPage() {
     return "";
   };
 
+  const validateBusinessName = (val: string) => {
+    return "";
+  };
+
   const validateField = (name: keyof Step1Data, value: string): string => {
     switch (name) {
       case "country":
@@ -519,8 +577,27 @@ export default function RegisterPage() {
     }
   };
 
+  // Business Name
+  const handleBusinessNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setFormData((prev) => ({ ...prev, business_name: value }));
+    if (errors.business_name) {
+      setErrors((prev) => ({
+        ...prev,
+        business_name: validateBusinessName(value),
+      }));
+    }
+  };
+
   const handleEmailBlur = () => {
     setErrors((prev) => ({ ...prev, email: validateEmail(formData.email) }));
+  };
+
+  const handleBusinessNameBlur = () => {
+    setErrors((prev) => ({
+      ...prev,
+      business_name: validateBusinessName(formData.business_name),
+    }));
   };
 
   const handleVerifyEmail = async () => {
@@ -530,9 +607,43 @@ export default function RegisterPage() {
       return;
     }
     setEmailVerifying(true);
-    await new Promise((res) => setTimeout(res, 1500));
-    setEmailVerifying(false);
-    setEmailVerified(true);
+
+    try {
+      // Make API Call.
+      const response = await fetch("/api/verify/email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          email: formData.email,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setErrors((prev) => ({
+          ...prev,
+          email:
+            result.message || "Email verification failed. Please try again.",
+        }));
+        return;
+      }
+
+      setEmailVerifying(false);
+      // setEmailVerified(true);
+      setIsModalOpen(true);
+    } catch (error) {
+      setErrors((prev) => ({
+        ...prev,
+        email: "Network error. Please check your connection and try again.",
+      }));
+    } finally {
+      setEmailVerifying(false);
+    }
   };
 
   const handleSelectCountry = (country: string) => {
@@ -553,6 +664,7 @@ export default function RegisterPage() {
       email: validateField("email", formData.email),
       accountType: validateField("accountType", formData.accountType),
       referral: "",
+      business_name: "",
     };
     setErrors(newErrors);
     if (Object.values(newErrors).some(Boolean)) return;
@@ -787,6 +899,34 @@ export default function RegisterPage() {
               )}
             </div>
 
+            {/* Business Name */}
+            <div className="flex flex-col gap-1 w-full">
+              <p className="text-[13px]">Business Name</p>
+              <div
+                className={`flex items-center gap-2 rounded-md border bg-white px-3 py-3 transition-all ${
+                  errors.business_name
+                    ? "border-red-400 ring-1 ring-red-200"
+                    : "border-neutral-300 focus-within:border-secondary focus-within:ring-1 focus-within:ring-secondary/10"
+                }`}
+              >
+                <input
+                  type="text"
+                  name="business_name"
+                  value={formData.business_name}
+                  onChange={handleBusinessNameChange}
+                  onBlur={handleBusinessNameBlur}
+                  placeholder="eg, Sample Tech Ltd"
+                  autoComplete="organization"
+                  className="w-full text-sm text-black focus:outline-none"
+                />
+              </div>
+              {errors.business_name && (
+                <p className="text-[12px] text-red-500 mt-1">
+                  {errors.business_name}
+                </p>
+              )}
+            </div>
+
             {/* Account Type */}
             <div className="flex flex-col gap-1 w-full">
               <p className="text-[13px]">I'm creating an account for:</p>
@@ -925,6 +1065,71 @@ export default function RegisterPage() {
           <Step2 accountType={formData.accountType} onBack={() => setStep(1)} />
         )}
       </div>
+
+      <Modal isOpen={isModalOpen}>
+        <Modal.Backdrop>
+          <Modal.Container className={"w-full"} size="lg" placement="top">
+            <Modal.Dialog>
+              <Modal.CloseTrigger />
+              <Modal.Header>
+                <Modal.Icon className="bg-accent-soft text-accent-soft-foreground">
+                  <RiInformation2Line size={24} />
+                </Modal.Icon>
+                <Modal.Heading className="font-black mt-2 text-[18px]">
+                  Enter OTP
+                </Modal.Heading>
+              </Modal.Header>
+              <Modal.Body>
+                <div className="flex flex-col mt-2 gap-3">
+                  <p className="text-[16px] text-black opacity-80">
+                    A confirmation code has been sent to your email address at{" "}
+                    <strong>{formData.email}</strong>
+                  </p>
+
+                  <div className="flex flex-col gap-1">
+                    <p className="text-sm text-black opacity-80">
+                      Enter confirmation code
+                    </p>
+                    <div
+                      className={`flex items-center gap-2 rounded-md border bg-white px-3 py-3 transition-all`}
+                    >
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="\d*"
+                        name="emailotp"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value)}
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        className="w-full text-sm text-black focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Modal.Body>
+              <Modal.Footer className="mt-6">
+                <HeroButton
+                  className={"rounded-sm px-8 py-5"}
+                  slot="close"
+                  variant="outline"
+                  onPress={() => setIsModalOpen(false)}
+                >
+                  Cancel
+                </HeroButton>
+                <HeroButton
+                  isDisabled={otp.length !== 6}
+                  className={"rounded-sm text-white px-8 py-5"}
+                  slot="close"
+                  onPress={() => handleVerifyEmail()}
+                >
+                  Verify
+                </HeroButton>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
     </div>
   );
 }

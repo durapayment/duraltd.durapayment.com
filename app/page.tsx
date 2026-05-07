@@ -2,8 +2,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "./components/button";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  // Router for navigation
+  const router = useRouter();
+
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
@@ -54,8 +58,34 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      // Replace with your actual login API call
-      await new Promise((res) => setTimeout(res, 1800));
+      const loginData = {
+        email: formData.email.trim(),
+        password: formData.password,
+      };
+
+      // Call login API
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(loginData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setErrors((prev) => ({
+          ...prev,
+          password: result.message || "Login failed. Please try again.",
+        }));
+        return;
+      }
+
+      // Success - redirect to dashboard
+      router.push("/dashboard");
       setSuccess(true);
     } catch {
       setErrors((prev) => ({
@@ -90,7 +120,7 @@ export default function LoginPage() {
       <div className="flex mt-0 md:mt-10 flex-1 flex-col justify-between md:justify-start items-center">
         <div className="max-w-154 w-full flex flex-col gap-8 px-0 md:px-10 py-10">
           <div className="flex flex-col gap-1">
-            <p className="text-[28px] leading-8 font-semibold">Welcome back</p>
+            <p className="text-[28px] leading-8 font-semibold">Welcome backs</p>
             <p className="text-[13px]">
               Sign in to continue to your Dura Payment account.
             </p>
