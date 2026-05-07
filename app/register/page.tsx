@@ -648,6 +648,7 @@ export default function RegisterPage() {
         return;
       }
 
+      setOtp("");
       setEmailVerifying(false);
       setIsModalOpen(true);
     } catch (error) {
@@ -657,13 +658,6 @@ export default function RegisterPage() {
       }));
     } finally {
       setEmailVerifying(false);
-    }
-  };
-
-  const handleValidateOtp = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (/^\d*$/.test(value) && value.length <= 6) {
-      setOtp(value);
     }
   };
 
@@ -686,6 +680,7 @@ export default function RegisterPage() {
         await new Promise((res) => setTimeout(res, 1000));
         setEmailVerified(true);
         setIsModalOpen(false);
+        setOtpVerifying(false);
         return;
       }
 
@@ -715,7 +710,9 @@ export default function RegisterPage() {
       }
 
       setEmailVerifying(false);
+      setOtp("");
       setEmailVerified(true);
+      setOtpVerifying(false);
       setIsModalOpen(false);
     } catch (error) {
       setErrors((prev) => ({
@@ -725,6 +722,13 @@ export default function RegisterPage() {
     } finally {
       setEmailVerifying(false);
     }
+  };
+
+  const handleCancelOtp = () => {
+    setOtp("");
+    setIsModalOpen(false);
+    setOtpVerifying(false);
+    setEmailVerified(false);
   };
 
   const handleSelectCountry = (country: string) => {
@@ -1194,7 +1198,7 @@ export default function RegisterPage() {
                   className={"rounded-sm px-8 py-5"}
                   slot="close"
                   variant="outline"
-                  onPress={() => setIsModalOpen(false)}
+                  onPress={() => handleCancelOtp()}
                 >
                   Cancel
                 </HeroButton>
@@ -1202,7 +1206,7 @@ export default function RegisterPage() {
                   isDisabled={otp.length !== 6}
                   className={"rounded-sm text-white px-8 py-5"}
                   slot="close"
-                  // isPending={otpVerifying}
+                  isPending={otpVerifying}
                   onPress={() => handleVerifyOtp()}
                 >
                   Verify
