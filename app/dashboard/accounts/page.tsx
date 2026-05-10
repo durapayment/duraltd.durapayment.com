@@ -1,7 +1,41 @@
-import { RiAddLine, RiMoreFill } from "react-icons/ri";
-import { Avatar, Button, Table } from "@heroui/react";
+"use client";
+
+import { useEffect, useState } from "react";
+import { RiAddLine, RiMoreFill, RiEyeLine, RiEyeOffLine } from "react-icons/ri";
+import { Avatar, Button, ProgressCircle, Table } from "@heroui/react";
+import { authService, User } from "@/app/lib/auth";
 
 export default function AccountsPage() {
+  const [showBalance, setShowBalance] = useState(true);
+
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [business, setBusiness] = useState<any>(null);
+  const [summary, setSummary] = useState<any>(null);
+
+  const fetchUser = async () => {
+    try {
+      const { isAuthenticated, user, business, summary } =
+        await authService.checkAuth();
+
+      if (isAuthenticated && user) {
+        setUser(user);
+        setBusiness(business);
+        setSummary(summary);
+        // console.log("Business fetched:", business);
+        console.log("Summary fetched:", summary);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUser();
+  }, []);
+
   const subAccounts = [
     {
       id: "SUB-78492",
@@ -37,6 +71,21 @@ export default function AccountsPage() {
     },
   ];
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center">
+        <div className="text-center mt-10 flex flex-col items-center">
+          <ProgressCircle isIndeterminate aria-label="Loading...">
+            <ProgressCircle.Track>
+              <ProgressCircle.TrackCircle />
+              <ProgressCircle.FillCircle />
+            </ProgressCircle.Track>
+          </ProgressCircle>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full flex h-full flex-col items-center">
       <div className="max-w-310 flex flex-col gap-6 flex-1 w-full">
@@ -53,6 +102,40 @@ export default function AccountsPage() {
             <RiAddLine size={20} />
             Generate New Sub Account
           </Button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 w-full max-w-120">
+          <div className="bg-accent px-5 py-6 gap-2 flex flex-col rounded-lg shadow-sm">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-white/75">
+                  Bank name
+                </p>
+                <p className="font-semibold text-white text-[18px]">
+                  DuraPayment MFB
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                className="p-2 text-white hover:bg-white/10"
+                isIconOnly
+                aria-label={showBalance ? "Hide balance" : "Show balance"}
+                onClick={() => setShowBalance((prev) => !prev)}
+              >
+                {showBalance ? (
+                  <RiEyeLine size={18} />
+                ) : (
+                  <RiEyeOffLine size={18} />
+                )}
+              </Button>
+            </div>
+            <p className="font-medium text-white text-[15px]">
+              Account No. 8141314105
+            </p>
+            <p className="text-[30px] text-white font-semibold">
+              {showBalance ? "₦3,450.00" : "****,***.**"}
+            </p>
+          </div>
         </div>
 
         {/* Sub Accounts Header + Search */}
@@ -85,7 +168,7 @@ export default function AccountsPage() {
                 <Table.Column>ACCOUNT NUMBER</Table.Column>
                 <Table.Column>BALANCE</Table.Column>
                 <Table.Column>CREATED</Table.Column>
-                <Table.Column>STATUS</Table.Column>
+                {/* <Table.Column>STATUS</Table.Column> */}
                 <Table.Column className="text-right">ACTIONS</Table.Column>
               </Table.Header>
               <Table.Body>
@@ -126,7 +209,7 @@ export default function AccountsPage() {
                       {account.created}
                     </Table.Cell>
 
-                    <Table.Cell>
+                    {/* <Table.Cell>
                       <span
                         className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                           account.status === "Active"
@@ -136,7 +219,7 @@ export default function AccountsPage() {
                       >
                         {account.status}
                       </span>
-                    </Table.Cell>
+                    </Table.Cell> */}
 
                     <Table.Cell className="text-right">
                       <Button

@@ -324,7 +324,7 @@ export default function Settings() {
 
       {/* Profile Tab */}
       {activeTab === "profile" && (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+        <div className="bg-white rounded-3xl border border-gray-200 p-8">
           <h2 className="text-[18px] font-semibold mb-6 flex items-center gap-3">
             <User className="text-gray-400" /> Personal &amp; Business
             Information
@@ -372,7 +372,7 @@ export default function Settings() {
 
       {/* Contact Tab */}
       {activeTab === "contact" && (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 max-w-2xl">
+        <div className="bg-white rounded-3xl border border-gray-200 p-8 max-w-2xl">
           <h2 className="text-xl font-semibold mb-6">Contact Information</h2>
 
           <div className="space-y-8">
@@ -422,7 +422,7 @@ export default function Settings() {
 
       {/* Compliance Tab */}
       {activeTab === "compliance" && (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+        <div className="bg-white rounded-3xl border border-gray-200 p-8">
           <h2 className="text-xl font-semibold mb-2">
             Business Verification (KYC)
           </h2>
@@ -509,7 +509,7 @@ export default function Settings() {
 
       {/* Preferences Tab */}
       {activeTab === "preferences" && (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 max-w-2xl">
+        <div className="bg-white rounded-3xl border border-gray-200 p-8 max-w-2xl">
           <h2 className="text-xl font-semibold mb-8">Preferences</h2>
 
           <div className="space-y-10">

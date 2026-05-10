@@ -9,8 +9,16 @@ import {
   RiMoreFill,
   RiBankLine,
 } from "react-icons/ri";
-import { Avatar, Button, Input, Table, Modal } from "@heroui/react";
-import { useState } from "react";
+import {
+  Avatar,
+  Button,
+  Input,
+  Table,
+  Modal,
+  ProgressCircle,
+} from "@heroui/react";
+import { useEffect, useState } from "react";
+import { authService, User } from "@/app/lib/auth";
 
 interface Transaction {
   id: string;
@@ -30,6 +38,48 @@ export default function HistoryPage() {
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [business, setBusiness] = useState<any>(null);
+  const [summary, setSummary] = useState<any>(null);
+
+  const fetchUser = async () => {
+    try {
+      const { isAuthenticated, user, business, summary } =
+        await authService.checkAuth();
+
+      if (isAuthenticated && user) {
+        setUser(user);
+        setBusiness(business);
+        setSummary(summary);
+        // console.log("Business fetched:", business);
+        console.log("Summary fetched:", summary);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUser();
+  }, []);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center">
+        <div className="text-center mt-10 flex flex-col items-center">
+          <ProgressCircle isIndeterminate aria-label="Loading...">
+            <ProgressCircle.Track>
+              <ProgressCircle.TrackCircle />
+              <ProgressCircle.FillCircle />
+            </ProgressCircle.Track>
+          </ProgressCircle>
+        </div>
+      </div>
+    );
+  }
 
   const transactions: Transaction[] = [
     {

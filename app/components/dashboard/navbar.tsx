@@ -1,3 +1,7 @@
+"use client";
+
+import { User, authService } from "@/app/lib/auth";
+import { useState, useEffect } from "react";
 import { IoMenuOutline } from "react-icons/io5";
 import { LuPanelLeftClose } from "react-icons/lu";
 import { RiNotification4Line, RiSearch2Line } from "react-icons/ri";
@@ -9,6 +13,32 @@ export function Navbar({
   onMenuClick: () => void;
   onSidebarToggle?: () => void;
 }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [business, setBusiness] = useState<any>(null);
+  const [summary, setSummary] = useState<any>(null);
+
+  const fetchUser = async () => {
+    try {
+      const { isAuthenticated, user, business, summary } =
+        await authService.checkAuth();
+
+      if (isAuthenticated && user) {
+        setUser(user);
+        setBusiness(business);
+        setSummary(summary);
+        // console.log("Business fetched:", business);
+        console.log("Summary fetched:", summary);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    fetchUser();
+  }, []);
   return (
     <nav className="w-full h-16 flex justify-between items-center px-4 border-b bg-dashboard-background">
       {/* Left */}
@@ -27,7 +57,9 @@ export function Navbar({
           onClick={onMenuClick}
         />
 
-        <p className="text-[20px] leading-7 font-bold">Good Morning John</p>
+        <p className="text-[20px] leading-7 font-bold">
+          Hello, <span className="capitalize">{business?.business_name}</span>
+        </p>
       </div>
 
       {/* Right */}

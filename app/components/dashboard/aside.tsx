@@ -1,13 +1,16 @@
 "use client";
 
+import { User, authService } from "@/app/lib/auth";
 import { Avatar } from "@heroui/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import { IoClose } from "react-icons/io5"; // ← Add this
 import {
   RiCustomerServiceLine,
   RiFileHistoryLine,
   RiHome6Line,
+  RiLogoutBoxLine,
   RiNotificationBadgeLine,
   RiRecordCircleLine,
   RiSettings3Line,
@@ -18,6 +21,31 @@ import {
 
 export const AsideBar = ({ onClose }: { onClose?: () => void }) => {
   const pathName = usePathname();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [business, setBusiness] = useState<any>(null);
+  const [summary, setSummary] = useState<any>(null);
+  const fetchUser = async () => {
+    try {
+      const { isAuthenticated, user, business, summary } =
+        await authService.checkAuth();
+
+      if (isAuthenticated && user) {
+        setUser(user);
+        setBusiness(business);
+        setSummary(summary);
+        // console.log("Business fetched:", business);
+        console.log("Summary fetched:", summary);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    fetchUser();
+  }, []);
   const listObject = {
     Dashboard: [
       {
@@ -52,13 +80,13 @@ export const AsideBar = ({ onClose }: { onClose?: () => void }) => {
         icon: <RiShieldKeyholeLine size={20} />,
         path: "/dashboard/credentials",
       },
-    ],
-    General: [
       {
         title: "Logs",
         icon: <RiRecordCircleLine size={20} />,
         path: "/dashboard/logs",
       },
+    ],
+    General: [
       {
         title: "Settings",
         icon: <RiSettings3Line size={20} />,
@@ -68,6 +96,11 @@ export const AsideBar = ({ onClose }: { onClose?: () => void }) => {
         title: "Help",
         icon: <RiCustomerServiceLine size={20} />,
         path: "/dashboard/help",
+      },
+      {
+        title: "Logout",
+        icon: <RiLogoutBoxLine size={20} />,
+        path: "/dashboard/logout",
       },
     ],
   };
@@ -87,8 +120,17 @@ export const AsideBar = ({ onClose }: { onClose?: () => void }) => {
             <Avatar.Fallback>JD</Avatar.Fallback>
           </Avatar>
           <div className="flex flex-col leading-4">
-            <p className="text-[14px] font-semibold">John Doe</p>
-            <p className="text-[12px] opacity-75">JS839MS1</p>
+            <div className="flex items-center gap-1 flex-wrap">
+              <p className="text-[14px] font-semibold capitalize">
+                {user?.first_name}
+              </p>
+              <p className="text-[14px] font-semibold capitalize">
+                {user?.last_name}
+              </p>
+            </div>
+            <p className="text-[12px] opacity-75 uppercase">
+              {business?.business_id}
+            </p>
           </div>
         </div>
         {onClose && (

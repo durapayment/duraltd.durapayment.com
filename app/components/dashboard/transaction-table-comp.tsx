@@ -1,33 +1,17 @@
 import { Table } from "@heroui/react";
 
-export const TransactionTable = () => {
-  const transactions = [
-    {
-      email: "kate@acme.com",
-      amount: "₦100,000",
-      status: "Completed",
-      transactionId: "738scb38cvva",
-    },
-    {
-      email: "john@acme.com",
-      amount: "₦150,000",
-      status: "Completed",
-      transactionId: "928ndf49dkks",
-    },
-    {
-      email: "sara@acme.com",
-      amount: "₦200,000",
-      status: "Failed",
-      transactionId: "384kdj92klls",
-    },
-    {
-      email: "michael@acme.com",
-      amount: "₦250,000",
-      status: "Pending",
-      transactionId: "567lkm89pqr",
-    },
-  ];
+interface typesForTransaction {
+  email: string;
+  amount: string;
+  status: string;
+  transactionId: string;
+}
 
+export const TransactionTable = ({
+  transactions,
+}: {
+  transactions: typesForTransaction[];
+}) => {
   return (
     <Table variant="secondary">
       <Table.ScrollContainer>
@@ -39,7 +23,7 @@ export const TransactionTable = () => {
             <Table.Column>Transaction ID</Table.Column>
           </Table.Header>
           <Table.Body>
-            {transactions.map((tx) => (
+            {transactions.map((tx: any) => (
               <Table.Row key={tx.transactionId}>
                 <Table.Cell>{tx.email}</Table.Cell>
                 <Table.Cell>{tx.amount}</Table.Cell>

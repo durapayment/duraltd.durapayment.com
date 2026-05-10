@@ -1,3 +1,5 @@
+"use client";
+
 import {
   RiArrowDownSLine,
   RiArrowUpLongLine,
@@ -6,14 +8,97 @@ import {
 } from "react-icons/ri";
 import SalesPerformance from "../components/chart";
 import TrafficSource from "../components/dashboard/trafic-source";
-import { Tabs } from "@heroui/react";
+import { ProgressCircle, Tabs } from "@heroui/react";
 import { TransactionTable } from "../components/dashboard/transaction-table-comp";
 import { CustomersTable } from "../components/dashboard/customer-table-comp";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { User, authService } from "../lib/auth";
+import { BusinessVerificationStatus } from "../components/business_verification_status";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [business, setBusiness] = useState<any>(null);
+  const [summary, setSummary] = useState<any>(null);
+
+  const fetchUser = async () => {
+    try {
+      const { isAuthenticated, user, business, summary } =
+        await authService.checkAuth();
+
+      if (isAuthenticated && user) {
+        setUser(user);
+        setBusiness(business);
+        setSummary(summary);
+        // console.log("Business fetched:", business);
+        console.log("Summary fetched:", summary);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    fetchUser();
+  }, []);
+
+  // Refresh page
+  const refreshPage = () => {
+    setLoading(true);
+    fetchUser();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center">
+        <div className="text-center mt-10 flex flex-col items-center">
+          <ProgressCircle isIndeterminate aria-label="Loading...">
+            <ProgressCircle.Track>
+              <ProgressCircle.TrackCircle />
+              <ProgressCircle.FillCircle />
+            </ProgressCircle.Track>
+          </ProgressCircle>
+        </div>
+      </div>
+    );
+  }
+
+  const transactions = [
+    {
+      email: "kate@acme.com",
+      amount: "₦100,000",
+      status: "Completed",
+      transactionId: "738scb38cvva",
+    },
+    {
+      email: "john@acme.com",
+      amount: "₦150,000",
+      status: "Completed",
+      transactionId: "928ndf49dkks",
+    },
+    {
+      email: "sara@acme.com",
+      amount: "₦200,000",
+      status: "Failed",
+      transactionId: "384kdj92klls",
+    },
+    {
+      email: "michael@acme.com",
+      amount: "₦250,000",
+      status: "Pending",
+      transactionId: "567lkm89pqr",
+    },
+  ];
+
   return (
     <div className="w-full flex h-full flex-col items-center">
       <div className="max-w-310 flex flex-col gap-4 flex-1 w-full">
+        {business?.verification_status !== "verified" && (
+          <BusinessVerificationStatus status={business?.verification_status} />
+        )}
         {/* Transaction Date */}
         <div className="flex w-full items-center justify-between">
           <div className="flex mt-4 w-max items-center gap-3">
@@ -22,7 +107,11 @@ export default function DashboardPage() {
               <p className="">Monthy</p>
               <RiArrowDownSLine className="" color="" />
             </div>
-            <div className="h-9 w-9 rounded-full flex items-center justify-center bg-dashboard-hover">
+            <div
+              role="presentation"
+              onClick={refreshPage}
+              className="h-9 w-9 cursor-pointer rounded-full flex items-center justify-center bg-dashboard-hover"
+            >
               <RiRefreshLine />
             </div>
           </div>
@@ -31,10 +120,10 @@ export default function DashboardPage() {
         {/* Totals */}
         <div className="grid grid-cols-2 lg:grid-cols-4 grid-rows-1 gap-3 ">
           <div className="bg-field-background h-21 rounded-lg p-2 xl:p-3 leading-5 text-[14px] shadow-sm flex flex-col justify-between">
-            <p className="opacity-75">Revenue</p>
+            <p className="opacity-75">Today's Collection</p>
             <div className="flex items-center justify-between">
               <p className="leading-8 text-[22px] lg:text-[22px] xl:text-[24px] font-semibold">
-                ₦229,441
+                ₦{summary?.today_collected}
               </p>
               <div className="flex items-center text-green-600 rounded-full px-2 py-0.5 gap-0 bg-green-50 ">
                 <RiArrowUpLongLine size={12} />
@@ -43,10 +132,10 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="bg-field-background h-21 rounded-lg p-2 xl:p-3 leading-5 text-[14px] shadow-sm flex flex-col justify-between">
-            <p className="opacity-75">Expenses</p>
+            <p className="opacity-75">Today's Expenses</p>
             <div className="flex items-center justify-between">
               <p className="leading-8 text-[22px] lg:text-[22px] xl:text-[24px] font-semibold">
-                ₦25,108
+                ₦{summary?.today_expenses}
               </p>
               <div className="flex items-center text-red-600 rounded-full px-2 py-0.5 gap-0 bg-red-50 ">
                 <RiArrowUpLongLine size={12} />
@@ -55,10 +144,10 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="bg-field-background h-21 rounded-lg p-2 xl:p-3 leading-5 text-[14px] shadow-sm flex flex-col justify-between">
-            <p className="opacity-75">Sales</p>
+            <p className="opacity-75">Joined Today</p>
             <div className="flex items-center justify-between">
               <p className="leading-8 text-[22px] lg:text-[22px] xl:text-[24px] font-semibold">
-                458
+                {summary?.new_customers}
               </p>
               <div className="flex items-center text-green-600 rounded-full px-2 py-0.5 gap-0 bg-green-50 ">
                 <RiArrowUpLongLine size={12} />
@@ -67,10 +156,10 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="bg-field-background h-21 rounded-lg p-2 xl:p-3 leading-5 text-[14px] shadow-sm flex flex-col justify-between">
-            <p className="opacity-75">Profit</p>
+            <p className="opacity-75">Total Customers</p>
             <div className="flex items-center justify-between">
               <p className="leading-8 text-[22px] lg:text-[22px] xl:text-[24px] font-semibold">
-                ₦203,133
+                {summary?.total_customers}
               </p>
               <div className="flex items-center text-green-600 rounded-full px-2 py-0.5 gap-0 bg-green-50 ">
                 <RiArrowUpLongLine size={12} />
@@ -131,26 +220,35 @@ export default function DashboardPage() {
         {/* Transaction History */}
         <div className="flex flex-col gap-2">
           <p className="text-[16px] font-medium">Most Recent</p>
-          <Tabs className="w-full ">
-            <Tabs.ListContainer>
-              <Tabs.List className="max-w-md" aria-label="Options">
-                <Tabs.Tab id="transactions">
-                  Transactions
-                  <Tabs.Indicator />
-                </Tabs.Tab>
-                <Tabs.Tab className="max-w-md" id="customers">
-                  Customers
-                  <Tabs.Indicator />
-                </Tabs.Tab>
-              </Tabs.List>
-            </Tabs.ListContainer>
-            <Tabs.Panel className="pt-4" id="transactions">
-              <TransactionTable />
-            </Tabs.Panel>
-            <Tabs.Panel className="pt-4" id="customers">
-              <CustomersTable />
-            </Tabs.Panel>
-          </Tabs>
+          {summary?.recent_transactions.lenght > 0 ||
+            (summary?.new_customers > 0 && (
+              <Tabs className="w-full ">
+                <Tabs.ListContainer>
+                  <Tabs.List className="max-w-md" aria-label="Options">
+                    {summary?.recent_transactions.lenght > 0 && (
+                      <Tabs.Tab id="transactions">
+                        Transactions
+                        <Tabs.Indicator />
+                      </Tabs.Tab>
+                    )}
+                    {summary?.new_customers.lenght > 0 && (
+                      <Tabs.Tab className="max-w-md" id="customers">
+                        Customers
+                        <Tabs.Indicator />
+                      </Tabs.Tab>
+                    )}
+                  </Tabs.List>
+                </Tabs.ListContainer>
+                <Tabs.Panel className="pt-4" id="transactions">
+                  <TransactionTable
+                    transactions={summary?.recent_transactions}
+                  />
+                </Tabs.Panel>
+                <Tabs.Panel className="pt-4" id="customers">
+                  <CustomersTable />
+                </Tabs.Panel>
+              </Tabs>
+            ))}
         </div>
 
         <div className="h-5"></div>
