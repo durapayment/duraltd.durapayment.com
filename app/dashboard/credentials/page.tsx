@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Copy,
   Eye,
@@ -17,7 +17,7 @@ import {
   Lock,
 } from "lucide-react";
 import clsx from "clsx";
-import { Tabs } from "@heroui/react";
+import { Tabs, ProgressCircle } from "@heroui/react";
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -42,33 +42,11 @@ interface NewKeyBanner {
 // ─────────────────────────────────────────────────────────
 // Utilities
 // ─────────────────────────────────────────────────────────
-function uid() {
-  return Math.random().toString(36).slice(2, 10);
-}
-
-function makeKey(mode: "test" | "live"): ApiKey {
-  const prefix = mode === "test" ? "test" : "live";
-  return {
-    id: uid(),
-    name: `Default ${mode === "test" ? "Test" : "Live"} Key`,
-    public_key: `pk_${prefix}_${uid()}${uid()}`,
-    secret_key: `sk_${prefix}_${uid()}${uid()}${uid()}`,
-    allowed_ips: [],
-    last_used_at: null,
-    created_at: new Date().toISOString(),
-    mode,
-  };
-}
-
 const IPV4_RE =
   /^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$/;
 
 function isValidIp(ip: string) {
   return IPV4_RE.test(ip.trim());
-}
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
 }
 
 function fmtDate(iso: string) {
@@ -154,7 +132,7 @@ function SecretField({ value, onCopy }: { value: string; onCopy: () => void }) {
   return (
     <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 font-mono text-[14px] group">
       <code className="flex-1 break-all text-gray-700 select-none">
-        {revealed ? value : "•".repeat(Math.min(value.length, 40))}
+        {revealed ? value : "•".repeat(Math.min(value?.length, 40))}
       </code>
       <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
@@ -217,11 +195,12 @@ function IpWhitelist({
   keyId: string;
   ips: string[];
   onAdd: (keyId: string, ip: string) => Promise<void>;
-  onRemove: (keyId: string, ip: string) => void;
+  onRemove: (keyId: string, ip: string) => Promise<void>;
 }) {
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
+  const [removingIp, setRemovingIp] = useState<string | null>(null);
 
   const handleAdd = async () => {
     const ip = input.trim();
@@ -237,12 +216,17 @@ function IpWhitelist({
       setError("IP already whitelisted");
       return;
     }
-
     setError("");
     setAdding(true);
     await onAdd(keyId, ip);
     setInput("");
     setAdding(false);
+  };
+
+  const handleRemove = async (ip: string) => {
+    setRemovingIp(ip);
+    await onRemove(keyId, ip);
+    setRemovingIp(null);
   };
 
   return (
@@ -268,10 +252,15 @@ function IpWhitelist({
             >
               <span>{ip}</span>
               <button
-                onClick={() => onRemove(keyId, ip)}
-                className="text-red-400 hover:text-red-600 transition-colors ml-3"
+                onClick={() => handleRemove(ip)}
+                disabled={removingIp === ip}
+                className="text-red-400 hover:text-red-600 transition-colors ml-3 disabled:opacity-40"
               >
-                <Trash2 size={13} />
+                {removingIp === ip ? (
+                  <RefreshCw size={13} className="animate-spin" />
+                ) : (
+                  <Trash2 size={13} />
+                )}
               </button>
             </div>
           ))}
@@ -312,7 +301,6 @@ function IpWhitelist({
           Add IP
         </button>
       </div>
-
       <p className="text-[11px] text-gray-400 mt-2">
         Only add static server IPs. Avoid dynamic/residential IPs.
       </p>
@@ -334,13 +322,12 @@ function KeyCard({
   onCopy: (text: string) => void;
   onRegenerate: (keyId: string) => void;
   onAddIp: (keyId: string, ip: string) => Promise<void>;
-  onRemoveIp: (keyId: string, ip: string) => void;
+  onRemoveIp: (keyId: string, ip: string) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(true);
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-      {/* Card header */}
       <div
         className="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
         onClick={() => setExpanded((v) => !v)}
@@ -351,7 +338,7 @@ function KeyCard({
               "w-8 h-8 rounded-xl flex items-center justify-center",
               apiKey.mode === "live"
                 ? "bg-red-100 text-red-600"
-                : "bg-blue-100 text-accbg-accent",
+                : "bg-blue-100 text-blue-600",
             )}
           >
             <Key size={15} />
@@ -388,7 +375,6 @@ function KeyCard({
         </div>
       </div>
 
-      {/* Card body */}
       {expanded && (
         <div className="px-6 pb-6 border-t border-gray-100 pt-5 space-y-4">
           <div>
@@ -405,7 +391,6 @@ function KeyCard({
               onCopy={() => onCopy(apiKey.public_key)}
             />
           </div>
-
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[12px] font-semibold text-gray-500 uppercase tracking-wider">
@@ -423,7 +408,6 @@ function KeyCard({
               onCopy={() => onCopy(apiKey.secret_key)}
             />
           </div>
-
           <IpWhitelist
             keyId={apiKey.id}
             ips={apiKey.allowed_ips}
@@ -437,7 +421,7 @@ function KeyCard({
 }
 
 // ─────────────────────────────────────────────────────────
-// Confirm modal (regenerate / first generate)
+// Confirm modal
 // ─────────────────────────────────────────────────────────
 function ConfirmModal({
   mode,
@@ -467,14 +451,12 @@ function ConfirmModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[420px] border border-gray-200 overflow-hidden">
-        {/* Top stripe */}
         <div
           className={clsx(
             "h-1.5 w-full",
             mode === "live" ? "bg-red-500" : "bg-blue-500",
           )}
         />
-
         <div className="p-6">
           <div className="flex items-start justify-between mb-4">
             <div>
@@ -545,7 +527,7 @@ function ConfirmModal({
                 "flex-1 py-2.5 rounded-xl text-[14px] font-semibold text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-60",
                 mode === "live"
                   ? "bg-red-600 hover:bg-red-700"
-                  : "bg-accent hover:bg-accent",
+                  : "bg-blue-600 hover:bg-blue-700",
               )}
             >
               {loading ? (
@@ -564,7 +546,7 @@ function ConfirmModal({
 }
 
 // ─────────────────────────────────────────────────────────
-// New Key Banner
+// New Key Banner — shown once after generation
 // ─────────────────────────────────────────────────────────
 function NewKeyBannerUI({
   banner,
@@ -598,12 +580,10 @@ function NewKeyBannerUI({
           <X size={18} />
         </button>
       </div>
-
       <p className="px-6 text-[14px] text-amber-800 mb-4">
         This is the <strong>only time</strong> your full secret key will be
         displayed. Copy it now and store it securely.
       </p>
-
       <div className="px-6 pb-5 space-y-3">
         {[
           {
@@ -662,7 +642,7 @@ function EmptyState({
           "w-14 h-14 rounded-2xl flex items-center justify-center mb-4",
           mode === "live"
             ? "bg-red-100 text-red-500"
-            : "bg-blue-100 text-accent",
+            : "bg-blue-100 text-blue-500",
         )}
       >
         <Zap size={24} />
@@ -681,7 +661,7 @@ function EmptyState({
           "flex items-center gap-2 px-5 py-2.5 rounded-xl text-[14px] font-semibold text-white transition-colors",
           mode === "live"
             ? "bg-red-600 hover:bg-red-700"
-            : "bg-accent hover:bg-accent",
+            : "bg-blue-600 hover:bg-blue-700",
         )}
       >
         <Plus size={16} />
@@ -700,19 +680,19 @@ export default function ApiKeys() {
     test: [],
     live: [],
   });
+  const [pageLoading, setPageLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Modal
   const [modal, setModal] = useState<{
     open: boolean;
     mode: "test" | "live";
     regenerateId: string | null;
   } | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
 
-  // New key banner
   const [newKeyBanner, setNewKeyBanner] = useState<NewKeyBanner | null>(null);
 
-  // Toast-like snack
   const [snack, setSnack] = useState<{
     msg: string;
     type: "ok" | "err";
@@ -722,82 +702,187 @@ export default function ApiKeys() {
     setTimeout(() => setSnack(null), 2500);
   };
 
-  const currentKeys = keys[mode];
+  // ── Fetch keys on mount ───────────────────────────────
 
-  // ── Handlers ──────────────────────────────────
+  const fetchKeys = async () => {
+    setPageLoading(true);
+    setFetchError(null);
+    try {
+      const res = await fetch("/api/keys", {
+        headers: { Accept: "application/json" },
+        credentials: "include",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? "Failed to load keys");
+      setKeys({
+        test: json.data?.test ?? [],
+        live: json.data?.live ?? [],
+      });
+    } catch (err: any) {
+      setFetchError(err.message ?? "Failed to load API keys");
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchKeys();
+  }, []);
+
+  // ── Generate / Regenerate ────────────────────────────
 
   const openGenerate = (
     m: "test" | "live" = mode,
     regenerateId: string | null = null,
   ) => {
+    setModalError(null);
     setModal({ open: true, mode: m, regenerateId });
   };
 
-  const handleConfirm = async (_password: string) => {
+  const handleConfirm = async (password: string) => {
     if (!modal) return;
     setModalLoading(true);
-    await sleep(1000); // simulate
+    setModalError(null);
+    try {
+      const res = await fetch("/api/keys/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ mode: modal.mode, password }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? "Failed to generate keys");
 
-    const newKey = makeKey(modal.mode);
+      const newKey: ApiKey = json.data;
 
-    setKeys((prev) => {
-      if (modal.regenerateId) {
-        // replace the specific key
-        return {
-          ...prev,
-          [modal.mode]: prev[modal.mode].map((k) =>
-            k.id === modal.regenerateId
-              ? { ...newKey, id: modal.regenerateId }
-              : k,
-          ),
-        };
-      }
-      // append new key
-      return { ...prev, [modal.mode]: [...prev[modal.mode], newKey] };
-    });
+      // Update local state — replace all keys for this mode (server deletes old ones)
+      setKeys((prev) => ({
+        ...prev,
+        [modal.mode]: [newKey],
+      }));
 
-    setNewKeyBanner({
-      public_key: newKey.public_key,
-      secret_key: newKey.secret_key,
-      mode: modal.mode,
-    });
-    setMode(modal.mode);
-    setModal(null);
-    setModalLoading(false);
-    showSnack(
-      `${modal.mode === "live" ? "Live" : "Test"} key ${modal.regenerateId ? "regenerated" : "created"}`,
-    );
+      setNewKeyBanner({
+        public_key: newKey.public_key,
+        secret_key: newKey.secret_key,
+        mode: modal.mode,
+      });
+      setMode(modal.mode);
+      setModal(null);
+      showSnack(
+        `${modal.mode === "live" ? "Live" : "Test"} key ${modal.regenerateId ? "regenerated" : "created"}`,
+      );
+    } catch (err: any) {
+      setModalError(err.message ?? "Something went wrong");
+    } finally {
+      setModalLoading(false);
+    }
   };
+
+  // ── Copy ─────────────────────────────────────────────
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text).catch(() => {});
     showSnack("Copied to clipboard");
   };
 
+  // ── IP management ────────────────────────────────────
+
   const handleAddIp = async (keyId: string, ip: string) => {
-    await sleep(600);
-    setKeys((prev) => ({
-      ...prev,
-      [mode]: prev[mode].map((k) =>
-        k.id === keyId ? { ...k, allowed_ips: [...k.allowed_ips, ip] } : k,
-      ),
-    }));
-    showSnack("IP added");
+    try {
+      const res = await fetch("/api/keys/add-ip", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ api_key_id: keyId, ip }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? "Failed to add IP");
+
+      // Update local state with server-returned IPs
+      setKeys((prev) => ({
+        ...prev,
+        [mode]: prev[mode].map((k) =>
+          k.id === keyId
+            ? { ...k, allowed_ips: json.allowed_ips ?? [...k.allowed_ips, ip] }
+            : k,
+        ),
+      }));
+      showSnack("IP added");
+    } catch (err: any) {
+      showSnack(err.message ?? "Failed to add IP", "err");
+    }
   };
 
-  const handleRemoveIp = (keyId: string, ip: string) => {
-    setKeys((prev) => ({
-      ...prev,
-      [mode]: prev[mode].map((k) =>
-        k.id === keyId
-          ? { ...k, allowed_ips: k.allowed_ips.filter((i) => i !== ip) }
-          : k,
-      ),
-    }));
-    showSnack("IP removed");
+  const handleRemoveIp = async (keyId: string, ip: string) => {
+    try {
+      const res = await fetch("/api/keys/remove-ip", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ api_key_id: keyId, ip }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? "Failed to remove IP");
+
+      setKeys((prev) => ({
+        ...prev,
+        [mode]: prev[mode].map((k) =>
+          k.id === keyId
+            ? {
+                ...k,
+                allowed_ips:
+                  json.allowed_ips ?? k.allowed_ips.filter((i) => i !== ip),
+              }
+            : k,
+        ),
+      }));
+      showSnack("IP removed");
+    } catch (err: any) {
+      showSnack(err.message ?? "Failed to remove IP", "err");
+    }
   };
 
-  // ── Render ────────────────────────────────────
+  // ── Render ───────────────────────────────────────────
+
+  const currentKeys = keys[mode];
+
+  if (pageLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <ProgressCircle isIndeterminate aria-label="Loading API keys...">
+          <ProgressCircle.Track>
+            <ProgressCircle.TrackCircle />
+            <ProgressCircle.FillCircle />
+          </ProgressCircle.Track>
+        </ProgressCircle>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="max-w-310 mx-auto px-4 py-8">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="text-sm text-red-600 mb-3">{fetchError}</p>
+          <button
+            onClick={fetchKeys}
+            className="px-4 py-2 rounded-xl border border-red-300 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <section className="max-w-310 mx-auto px-4 py-8">
@@ -840,7 +925,7 @@ export default function ApiKeys() {
         </Tabs.ListContainer>
       </Tabs>
 
-      {/* Live mode warning strip */}
+      {/* Live mode warning */}
       {mode === "live" && (
         <div className="mb-5 flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
           <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
@@ -861,7 +946,7 @@ export default function ApiKeys() {
               "flex items-center gap-2 px-4 py-2 rounded-xl text-[14px] font-semibold text-white transition-colors",
               mode === "live"
                 ? "bg-red-600 hover:bg-red-700"
-                : "bg-accent hover:bg-accent",
+                : "bg-blue-600 hover:bg-blue-700",
             )}
           >
             <Plus size={14} />
@@ -891,7 +976,7 @@ export default function ApiKeys() {
       {/* Footer */}
       <div className="mt-10 text-[14px] text-gray-400">
         Need help?{" "}
-        <a href="/docs" className="text-accent hover:underline">
+        <a href="/docs" className="text-blue-500 hover:underline">
           Read the integration docs →
         </a>
       </div>
@@ -907,6 +992,12 @@ export default function ApiKeys() {
           onCancel={() => setModal(null)}
           loading={modalLoading}
         />
+      )}
+      {/* Modal error shown below modal — or you can inline it */}
+      {modalError && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 px-5 py-3 rounded-xl text-[14px] font-medium text-white bg-red-600 shadow-xl z-50">
+          {modalError}
+        </div>
       )}
 
       {/* Snack */}
