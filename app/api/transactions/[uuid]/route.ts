@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { uuid: string } },
+  { params }: { params: Promise<{ uuid: string }> },
 ) {
   try {
     const accessToken = request.cookies.get("access_token")?.value;
@@ -14,8 +14,10 @@ export async function GET(
       );
     }
 
+    const { uuid } = await params;
+
     const response = await fetch(
-      `${process.env.LARAVEL_API_URL}/api/transactions/${params.uuid}`,
+      `${process.env.LARAVEL_API_URL}/api/transactions/${uuid}`,
       {
         method: "GET",
         headers: {
