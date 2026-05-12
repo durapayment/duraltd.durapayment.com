@@ -455,6 +455,7 @@ export default function HistoryPage() {
       // console.log(json);
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const json = await res.json();
+      console.log(json);
       setTransactions(json.data);
       setMeta(json.meta);
       setStats(json.stats);

@@ -33,7 +33,10 @@ export default function DashboardPage() {
         setBusiness(business);
         setSummary(summary);
         // console.log("Business fetched:", business);
-        console.log("Summary fetched:", summary);
+        console.log(
+          "Summary fetcsshed:",
+          summary?.recent_transactions.length > 0,
+        );
       }
     } catch (error) {
       console.error("Failed to fetch user:", error);
@@ -220,35 +223,33 @@ export default function DashboardPage() {
         {/* Transaction History */}
         <div className="flex flex-col gap-2">
           <p className="text-[16px] font-medium">Most Recent</p>
-          {summary?.recent_transactions.lenght > 0 ||
-            (summary?.new_customers > 0 && (
-              <Tabs className="w-full ">
-                <Tabs.ListContainer>
-                  <Tabs.List className="max-w-md" aria-label="Options">
-                    {summary?.recent_transactions.lenght > 0 && (
-                      <Tabs.Tab id="transactions">
-                        Transactions
-                        <Tabs.Indicator />
-                      </Tabs.Tab>
-                    )}
-                    {summary?.new_customers.lenght > 0 && (
-                      <Tabs.Tab className="max-w-md" id="customers">
-                        Customers
-                        <Tabs.Indicator />
-                      </Tabs.Tab>
-                    )}
-                  </Tabs.List>
-                </Tabs.ListContainer>
-                <Tabs.Panel className="pt-4" id="transactions">
-                  <TransactionTable
-                    transactions={summary?.recent_transactions}
-                  />
-                </Tabs.Panel>
-                <Tabs.Panel className="pt-4" id="customers">
-                  <CustomersTable />
-                </Tabs.Panel>
-              </Tabs>
-            ))}
+          {summary?.recent_transactions.length ||
+          summary?.new_customers.length > 0 ? (
+            <Tabs className="w-full ">
+              <Tabs.ListContainer>
+                <Tabs.List className="max-w-md" aria-label="Options">
+                  {summary?.recent_transactions.length > 0 && (
+                    <Tabs.Tab id="transactions">
+                      Transactions
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                  )}
+                  {summary?.new_customers.length > 0 && (
+                    <Tabs.Tab className="max-w-md" id="customers">
+                      Customers
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                  )}
+                </Tabs.List>
+              </Tabs.ListContainer>
+              <Tabs.Panel className="pt-4" id="transactions">
+                <TransactionTable transactions={summary?.recent_transactions} />
+              </Tabs.Panel>
+              <Tabs.Panel className="pt-4" id="customers">
+                <CustomersTable />
+              </Tabs.Panel>
+            </Tabs>
+          ) : null}
         </div>
 
         <div className="h-5"></div>
