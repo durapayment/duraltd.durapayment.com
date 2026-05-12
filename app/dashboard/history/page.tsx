@@ -452,7 +452,6 @@ export default function HistoryPage() {
         headers: { Accept: "application/json" },
         credentials: "include",
       });
-      // console.log(json);
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const json = await res.json();
       console.log(json);

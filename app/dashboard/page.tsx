@@ -32,11 +32,6 @@ export default function DashboardPage() {
         setUser(user);
         setBusiness(business);
         setSummary(summary);
-        // console.log("Business fetched:", business);
-        console.log(
-          "Summary fetcsshed:",
-          summary?.recent_transactions.length > 0,
-        );
       }
     } catch (error) {
       console.error("Failed to fetch user:", error);

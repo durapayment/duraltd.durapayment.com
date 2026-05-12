@@ -35,7 +35,6 @@ export const AsideBar = ({ onClose }: { onClose?: () => void }) => {
         setBusiness(business);
         setSummary(summary);
         // console.log("Business fetched:", business);
-        console.log("Summary fetched:", summary);
       }
     } catch (error) {
       console.error("Failed to fetch user:", error);
