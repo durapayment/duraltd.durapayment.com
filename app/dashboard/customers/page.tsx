@@ -2,7 +2,6 @@
 
 import {
   RiSearchLine,
-  RiFilter3Line,
   RiUserAddLine,
   RiMoreFill,
   RiUserLine,
@@ -10,200 +9,83 @@ import {
   RiCloseLine,
   RiPhoneLine,
   RiMailLine,
-  RiBankCardLine,
-  RiCalendarLine,
   RiTimeLine,
+  RiRefreshLine,
 } from "react-icons/ri";
 import { Avatar, Button, Table } from "@heroui/react";
-import { useState, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 interface Customer {
   id: string;
   name: string;
   email: string;
   phone: string;
-  accountNo: string;
-  status: "active" | "inactive" | "suspended";
-  totalTransactions: number;
-  balance: string;
-  joinedDate: string;
-  lastActive: string;
-  dp: string;
+  totalSpent: number;
+  paymentsCount: number;
+  lastSeen: string;
+  status: "active" | "inactive";
 }
 
-const MOCK_CUSTOMERS: Customer[] = [
-  {
-    id: "CUST-10001",
-    name: "Adebayo Chukwudi",
-    email: "adebayo.chukwudi@gmail.com",
-    phone: "+234 803 456 7890",
-    accountNo: "9987654321",
-    status: "active",
-    totalTransactions: 24,
-    balance: "₦3,695,800",
-    joinedDate: "Mar 12, 2025",
-    lastActive: "Apr 28, 2026",
-    dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=9",
-  },
-  {
-    id: "CUST-10002",
-    name: "Fatima Okonkwo",
-    email: "fatima.okonkwo@yahoo.com",
-    phone: "+234 809 123 4567",
-    accountNo: "9987654320",
-    status: "active",
-    totalTransactions: 18,
-    balance: "₦1,245,800",
-    joinedDate: "Jan 05, 2025",
-    lastActive: "Apr 27, 2026",
-    dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=10",
-  },
-  {
-    id: "CUST-10003",
-    name: "Emmanuel Okafor",
-    email: "emmanuel.okafor@hotmail.com",
-    phone: "+234 701 987 6543",
-    accountNo: "9987654319",
-    status: "active",
-    totalTransactions: 31,
-    balance: "₦2,138,250",
-    joinedDate: "Nov 20, 2024",
-    lastActive: "Apr 26, 2026",
-    dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=11",
-  },
-  {
-    id: "CUST-10004",
-    name: "Aisha Bello",
-    email: "aisha.bello@outlook.com",
-    phone: "+234 905 234 5678",
-    accountNo: "9987654318",
-    status: "inactive",
-    totalTransactions: 12,
-    balance: "₦638,250",
-    joinedDate: "Feb 14, 2025",
-    lastActive: "Apr 20, 2026",
-    dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=12",
-  },
-  {
-    id: "CUST-10005",
-    name: "Chinedu Eze",
-    email: "chinedu.eze@gmail.com",
-    phone: "+234 803 111 2222",
-    accountNo: "9987654317",
-    status: "active",
-    totalTransactions: 45,
-    balance: "₦4,872,100",
-    joinedDate: "Oct 01, 2024",
-    lastActive: "Apr 29, 2026",
-    dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=13",
-  },
-  {
-    id: "CUST-10006",
-    name: "Ngozi Adeyemi",
-    email: "ngozi.adeyemi@gmail.com",
-    phone: "+234 812 345 6789",
-    accountNo: "9987654316",
-    status: "active",
-    totalTransactions: 9,
-    balance: "₦980,000",
-    joinedDate: "Apr 01, 2026",
-    lastActive: "Apr 29, 2026",
-    dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=14",
-  },
-  {
-    id: "CUST-10007",
-    name: "Tunde Bakare",
-    email: "tunde.bakare@yahoo.com",
-    phone: "+234 706 789 0123",
-    accountNo: "9987654315",
-    status: "suspended",
-    totalTransactions: 3,
-    balance: "₦45,000",
-    joinedDate: "Dec 10, 2024",
-    lastActive: "Feb 14, 2026",
-    dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=15",
-  },
-  {
-    id: "CUST-10008",
-    name: "Chidinma Obi",
-    email: "chidinma.obi@outlook.com",
-    phone: "+234 901 234 5678",
-    accountNo: "9987654314",
-    status: "active",
-    totalTransactions: 27,
-    balance: "₦2,560,400",
-    joinedDate: "Sep 15, 2024",
-    lastActive: "Apr 28, 2026",
-    dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=16",
-  },
-  {
-    id: "CUST-10009",
-    name: "Emeka Nwosu",
-    email: "emeka.nwosu@gmail.com",
-    phone: "+234 813 456 7890",
-    accountNo: "9987654313",
-    status: "inactive",
-    totalTransactions: 6,
-    balance: "₦120,750",
-    joinedDate: "Mar 28, 2025",
-    lastActive: "Mar 10, 2026",
-    dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=17",
-  },
-  {
-    id: "CUST-10010",
-    name: "Halima Yusuf",
-    email: "halima.yusuf@gmail.com",
-    phone: "+234 802 345 6789",
-    accountNo: "9987654312",
-    status: "active",
-    totalTransactions: 52,
-    balance: "₦6,340,200",
-    joinedDate: "Jul 22, 2024",
-    lastActive: "Apr 30, 2026",
-    dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=18",
-  },
-  {
-    id: "CUST-10011",
-    name: "Segun Lawal",
-    email: "segun.lawal@hotmail.com",
-    phone: "+234 908 567 8901",
-    accountNo: "9987654311",
-    status: "active",
-    totalTransactions: 14,
-    balance: "₦870,500",
-    joinedDate: "Jun 05, 2025",
-    lastActive: "Apr 25, 2026",
-    dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=19",
-  },
-  {
-    id: "CUST-10012",
-    name: "Blessing Onyekachi",
-    email: "blessing.o@yahoo.com",
-    phone: "+234 705 678 9012",
-    accountNo: "9987654310",
-    status: "active",
-    totalTransactions: 33,
-    balance: "₦3,110,900",
-    joinedDate: "Aug 18, 2024",
-    lastActive: "Apr 29, 2026",
-    dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=20",
-  },
-];
+interface PaginationMeta {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number | null;
+  to: number | null;
+}
+
+interface Stats {
+  total_customers: number;
+  active_customers: number;
+  total_revenue: number;
+}
+
+/**
+ * Safely extract the customers array from the API response.
+ * Handles both shapes Laravel may return:
+ *   Shape A: { data: [...], meta, stats }
+ *   Shape B: { data: { data: [...], current_page, ... }, meta, stats }
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractCustomers(data: any): Customer[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (data.data && Array.isArray(data.data)) return data.data;
+  return [];
+}
 
 const STATUS_FILTERS = [
   { value: "all", label: "All Statuses" },
   { value: "active", label: "Active" },
   { value: "inactive", label: "Inactive" },
-  { value: "suspended", label: "Suspended" },
 ];
 
-const ITEMS_PER_PAGE = 8;
+const PER_PAGE = 20;
+
+function formatCurrency(amount: number): string {
+  return (
+    "₦" +
+    new Intl.NumberFormat("en-NG", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount ?? 0)
+  );
+}
+
+function formatDate(dateString: string): string {
+  if (!dateString) return "—";
+  return new Date(dateString).toLocaleDateString("en-NG", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 function StatusBadge({ status }: { status: Customer["status"] }) {
   const styles: Record<Customer["status"], string> = {
     active: "bg-green-50 text-green-600",
     inactive: "bg-gray-100 text-gray-600",
-    suspended: "bg-red-50 text-red-600",
   };
   return (
     <span
@@ -221,6 +103,13 @@ function CustomerModal({
   customer: Customer;
   onClose: () => void;
 }) {
+  const initials = customer.name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <div
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
@@ -241,10 +130,7 @@ function CustomerModal({
         {/* Profile Hero */}
         <div className="flex flex-col items-center py-6 px-5 bg-gray-50 border-b border-gray-100">
           <Avatar className="w-16 h-16 mb-3">
-            <Avatar.Image src={customer.dp} alt={customer.name} />
-            <Avatar.Fallback className="text-lg">
-              {customer.name.charAt(0)}
-            </Avatar.Fallback>
+            <Avatar.Fallback className="text-lg">{initials}</Avatar.Fallback>
           </Avatar>
           <h3 className="font-semibold text-gray-900 text-lg">
             {customer.name}
@@ -264,36 +150,25 @@ function CustomerModal({
             {
               icon: <RiPhoneLine size={15} />,
               label: "Phone",
-              value: customer.phone,
-            },
-            {
-              icon: <RiBankCardLine size={15} />,
-              label: "Account No.",
-              value: customer.accountNo,
-              mono: true,
+              value: customer.phone || "—",
             },
             {
               icon: <RiUserLine size={15} />,
-              label: "Balance",
-              value: customer.balance,
+              label: "Total Spent",
+              value: formatCurrency(customer.totalSpent),
               green: true,
             },
             {
               icon: <RiUserLine size={15} />,
-              label: "Total Transactions",
-              value: String(customer.totalTransactions),
-            },
-            {
-              icon: <RiCalendarLine size={15} />,
-              label: "Joined",
-              value: customer.joinedDate,
+              label: "Total Payments",
+              value: String(customer.paymentsCount),
             },
             {
               icon: <RiTimeLine size={15} />,
-              label: "Last Active",
-              value: customer.lastActive,
+              label: "Last Seen",
+              value: formatDate(customer.lastSeen),
             },
-          ].map(({ icon, label, value, mono, green }) => (
+          ].map(({ icon, label, value, green }) => (
             <div
               key={label}
               className="flex items-center justify-between gap-4"
@@ -304,11 +179,7 @@ function CustomerModal({
               </div>
               <span
                 className={`text-sm text-right ${
-                  mono
-                    ? "font-mono text-gray-700"
-                    : green
-                      ? "font-semibold text-green-600"
-                      : "text-gray-900"
+                  green ? "font-semibold text-green-600" : "text-gray-900"
                 }`}
               >
                 {value}
@@ -318,12 +189,13 @@ function CustomerModal({
         </div>
 
         {/* Actions */}
-        <div className="px-5 pb-5 flex gap-2">
+        {/* <div className="px-5 pb-5 flex gap-2">
           <Button variant="outline" className="flex-1">
             View Transactions
           </Button>
           <Button className="flex-1 bg-black text-white">Edit Customer</Button>
-        </div>
+        </div> */}
+        <div className="h-3"></div>
       </div>
     </div>
   );
@@ -337,41 +209,73 @@ export default function CustomersPage() {
     null,
   );
 
-  const filteredCustomers = useMemo(() => {
-    const q = searchTerm.toLowerCase().trim();
-    return MOCK_CUSTOMERS.filter((c) => {
-      const matchesSearch =
-        !q ||
-        c.name.toLowerCase().includes(q) ||
-        c.email.toLowerCase().includes(q) ||
-        c.accountNo.includes(q) ||
-        c.phone.includes(q);
-      const matchesStatus = statusFilter === "all" || c.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [searchTerm, statusFilter]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const paginatedCustomers = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredCustomers.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredCustomers, currentPage]);
+  const fetchCustomers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-  const totalCustomers = MOCK_CUSTOMERS.length;
-  const activeCustomers = MOCK_CUSTOMERS.filter(
-    (c) => c.status === "active",
-  ).length;
+    try {
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        per_page: String(PER_PAGE),
+      });
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (statusFilter !== "all") params.set("status", statusFilter);
+
+      const res = await fetch(`/api/customers?${params.toString()}`);
+
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to load customers");
+      }
+
+      // Use `any` here intentionally — the response shape can vary
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const json: any = await res.json();
+      // console.log("API response:", JSON.stringify(json, null, 2));
+
+      setCustomers(extractCustomers(json.data));
+      setMeta(json.meta ?? null);
+      setStats(json.stats ?? null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setCustomers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, debouncedSearch, statusFilter]);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
+    const val = e.target.value;
+    setSearchTerm(val);
     setCurrentPage(1);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => setDebouncedSearch(val), 400);
   };
 
   const handleStatusFilter = (value: string) => {
     setStatusFilter(value);
     setCurrentPage(1);
   };
+
+  const totalPages = meta?.last_page ?? 1;
 
   return (
     <div className="w-full flex h-full flex-col items-center">
@@ -381,7 +285,7 @@ export default function CustomersPage() {
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
             <p className="text-gray-500 text-sm mt-1">
-              Manage all your banking customers
+              Manage all your payment customers
             </p>
           </div>
           <Button className="flex items-center gap-2 bg-black text-white">
@@ -391,7 +295,7 @@ export default function CustomersPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white p-6 rounded-2xl shadow-sm">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -400,7 +304,7 @@ export default function CustomersPage() {
               <div>
                 <p className="text-sm text-gray-500">Total Customers</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {totalCustomers.toLocaleString()}
+                  {stats ? stats.total_customers.toLocaleString() : "—"}
                 </p>
               </div>
             </div>
@@ -412,9 +316,23 @@ export default function CustomersPage() {
                 <RiUserFollowLine className="text-green-600" size={28} />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Active Customers</p>
+                <p className="text-sm text-gray-500">Active (30 days)</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {activeCustomers.toLocaleString()}
+                  {stats ? stats.active_customers.toLocaleString() : "—"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                <RiUserLine className="text-purple-600" size={28} />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Total Revenue</p>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {stats ? formatCurrency(stats.total_revenue) : "—"}
                 </p>
               </div>
             </div>
@@ -428,7 +346,7 @@ export default function CustomersPage() {
             <input
               value={searchTerm}
               onChange={handleSearch}
-              placeholder="Search by name, email or account number..."
+              placeholder="Search by name, email or phone..."
               className="px-10 py-2 rounded-full bg-white outline-none w-full border border-gray-200 focus:border-gray-400 text-sm"
             />
           </div>
@@ -447,8 +365,31 @@ export default function CustomersPage() {
                 {s.label}
               </button>
             ))}
+            <button
+              onClick={fetchCustomers}
+              className="p-1.5 rounded-full bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+              title="Refresh"
+            >
+              <RiRefreshLine
+                size={16}
+                className={loading ? "animate-spin" : ""}
+              />
+            </button>
           </div>
         </div>
+
+        {/* Error state */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex justify-between items-center">
+            <span>{error}</span>
+            <button
+              onClick={fetchCustomers}
+              className="underline text-red-600 ml-4"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* Customers Table */}
         <Table variant="secondary" aria-label="Customers Table">
@@ -456,25 +397,36 @@ export default function CustomersPage() {
             <Table.Content>
               <Table.Header>
                 <Table.Column isRowHeader>CUSTOMER</Table.Column>
-                <Table.Column>ACCOUNT NO</Table.Column>
-                <Table.Column>BALANCE</Table.Column>
-                <Table.Column>TRANSACTIONS</Table.Column>
+                <Table.Column className={"text-nowrap"}>
+                  TOTAL SPENT
+                </Table.Column>
+                <Table.Column>PAYMENTS</Table.Column>
                 <Table.Column>STATUS</Table.Column>
-                <Table.Column>JOINED</Table.Column>
+                <Table.Column className={"text-nowrap"}>LAST SEEN</Table.Column>
                 <Table.Column className="text-right">ACTIONS</Table.Column>
               </Table.Header>
               <Table.Body>
-                {paginatedCustomers.length === 0 ? (
+                {loading ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <Table.Row key={i}>
+                      {Array.from({ length: 6 }).map((_, j) => (
+                        <Table.Cell key={j}>
+                          <div className="h-4 bg-gray-100 rounded animate-pulse w-full max-w-[120px]" />
+                        </Table.Cell>
+                      ))}
+                    </Table.Row>
+                  ))
+                ) : customers.length === 0 ? (
                   <Table.Row>
                     <Table.Cell
-                      colSpan={7}
+                      colSpan={6}
                       className="text-center py-12 text-gray-400 text-sm"
                     >
                       No customers match your search
                     </Table.Cell>
                   </Table.Row>
                 ) : (
-                  paginatedCustomers.map((customer) => (
+                  customers.map((customer) => (
                     <Table.Row
                       key={customer.id}
                       className="cursor-pointer hover:bg-gray-50"
@@ -483,12 +435,13 @@ export default function CustomersPage() {
                       <Table.Cell>
                         <div className="flex items-center gap-3">
                           <Avatar>
-                            <Avatar.Image
-                              src={customer.dp}
-                              alt={customer.name}
-                            />
                             <Avatar.Fallback>
-                              {customer.name.charAt(0)}
+                              {customer.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .slice(0, 2)
+                                .toUpperCase()}
                             </Avatar.Fallback>
                           </Avatar>
                           <div>
@@ -503,20 +456,14 @@ export default function CustomersPage() {
                       </Table.Cell>
 
                       <Table.Cell>
-                        <p className="font-mono text-sm text-gray-600 text-nowrap">
-                          {customer.accountNo}
-                        </p>
-                      </Table.Cell>
-
-                      <Table.Cell>
                         <p className="font-medium text-green-600 text-nowrap">
-                          {customer.balance}
+                          {formatCurrency(customer.totalSpent)}
                         </p>
                       </Table.Cell>
 
                       <Table.Cell>
                         <p className="text-sm font-medium">
-                          {customer.totalTransactions}
+                          {customer.paymentsCount}
                         </p>
                       </Table.Cell>
 
@@ -525,7 +472,7 @@ export default function CustomersPage() {
                       </Table.Cell>
 
                       <Table.Cell className="text-sm text-nowrap text-gray-500">
-                        {customer.joinedDate}
+                        {formatDate(customer.lastSeen)}
                       </Table.Cell>
 
                       <Table.Cell className="text-right">
@@ -549,17 +496,10 @@ export default function CustomersPage() {
         </Table>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {!loading && totalPages > 1 && meta && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-4">
             <p className="text-sm text-gray-500">
-              Showing{" "}
-              {Math.min(
-                (currentPage - 1) * ITEMS_PER_PAGE + 1,
-                filteredCustomers.length,
-              )}
-              –
-              {Math.min(currentPage * ITEMS_PER_PAGE, filteredCustomers.length)}{" "}
-              of {filteredCustomers.length} customers
+              Showing {meta.from ?? 0}–{meta.to ?? 0} of {meta.total} customers
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -569,21 +509,37 @@ export default function CustomersPage() {
               >
                 Previous
               </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                      page === currentPage
-                        ? "bg-gray-900 text-white border-gray-900"
-                        : "border-gray-200 hover:bg-gray-50"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ),
-              )}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(
+                  (p) =>
+                    p === 1 ||
+                    p === totalPages ||
+                    Math.abs(p - currentPage) <= 1,
+                )
+                .reduce<(number | "...")[]>((acc, p, i, arr) => {
+                  if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("...");
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((item, i) =>
+                  item === "..." ? (
+                    <span key={`ellipsis-${i}`} className="px-2 text-gray-400">
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={item}
+                      onClick={() => setCurrentPage(item as number)}
+                      className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                        item === currentPage
+                          ? "bg-gray-900 text-white border-gray-900"
+                          : "border-gray-200 hover:bg-gray-50"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  ),
+                )}
               <button
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage((p) => p + 1)}
