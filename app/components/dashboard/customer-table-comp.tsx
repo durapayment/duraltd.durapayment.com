@@ -1,36 +1,47 @@
 import { Avatar, Table } from "@heroui/react";
 
-export const CustomersTable = () => {
-  const customers = [
-    {
-      name: "Kate Moore",
-      phone: "+234 801 234 5678",
-      email: "kate@acme.com",
-      status: "Active",
-      dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=7",
-    },
-    {
-      name: "John Smith",
-      phone: "+234 802 345 6789",
-      email: "john@acme.com",
-      status: "Active",
-      dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=9",
-    },
-    {
-      name: "Sara Johnson",
-      phone: "+234 803 456 7890",
-      email: "sara@acme.com",
-      status: "Inactive",
-      dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=10",
-    },
-    {
-      name: "Michael Brown",
-      phone: "+234 804 567 8901",
-      email: "michael@acme.com",
-      status: "Active",
-      dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=11",
-    },
-  ];
+interface typesForTransaction {
+  email: string;
+  name: string;
+  status: string;
+  phone: string;
+  dp: string;
+}
+export const CustomersTable = ({
+  customers,
+}: {
+  customers: typesForTransaction[];
+}) => {
+  // const customers = [
+  //   {
+  //     name: "Kate Moore",
+  //     phone: "+234 801 234 5678",
+  //     email: "kate@acme.com",
+  //     status: "Active",
+  //     dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=7",
+  //   },
+  //   {
+  //     name: "John Smith",
+  //     phone: "+234 802 345 6789",
+  //     email: "john@acme.com",
+  //     status: "Active",
+  //     dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=9",
+  //   },
+  //   {
+  //     name: "Sara Johnson",
+  //     phone: "+234 803 456 7890",
+  //     email: "sara@acme.com",
+  //     status: "Inactive",
+  //     dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=10",
+  //   },
+  //   {
+  //     name: "Michael Brown",
+  //     phone: "+234 804 567 8901",
+  //     email: "michael@acme.com",
+  //     status: "Active",
+  //     dp: "https://img.heroui.chat/image/avatar?w=400&h=400&u=11",
+  //   },
+  // ];
 
   return (
     <Table variant="secondary">

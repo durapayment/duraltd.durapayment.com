@@ -32,6 +32,7 @@ export default function DashboardPage() {
         setUser(user);
         setBusiness(business);
         setSummary(summary);
+        console.log(summary?.recent_customers);
       }
     } catch (error) {
       console.error("Failed to fetch user:", error);
@@ -219,7 +220,7 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-2">
           <p className="text-[16px] font-medium">Most Recent</p>
           {summary?.recent_transactions.length ||
-          summary?.new_customers.length > 0 ? (
+          summary?.recent_customers.length > 0 ? (
             <Tabs className="w-full ">
               <Tabs.ListContainer>
                 <Tabs.List className="max-w-md" aria-label="Options">
@@ -229,7 +230,7 @@ export default function DashboardPage() {
                       <Tabs.Indicator />
                     </Tabs.Tab>
                   )}
-                  {summary?.new_customers.length > 0 && (
+                  {summary?.recent_customers.length > 0 && (
                     <Tabs.Tab className="max-w-md" id="customers">
                       Customers
                       <Tabs.Indicator />
@@ -241,7 +242,7 @@ export default function DashboardPage() {
                 <TransactionTable transactions={summary?.recent_transactions} />
               </Tabs.Panel>
               <Tabs.Panel className="pt-4" id="customers">
-                <CustomersTable />
+                <CustomersTable customers={summary?.recent_customers} />
               </Tabs.Panel>
             </Tabs>
           ) : null}

@@ -132,7 +132,7 @@ export default function AccountsPage() {
               Account No. 8141314105
             </p>
             <p className="text-[30px] text-white font-semibold">
-              {showBalance ? "₦3,450.00" : "****,***.**"}
+              {showBalance ? `₦${business.account_balance}` : "****,***.**"}
             </p>
           </div>
         </div>
