@@ -19,6 +19,7 @@ import { ProgressCircle, Toast, toast } from "@heroui/react";
 import clsx from "clsx";
 import { Button, Spinner } from "@heroui/react";
 import Link from "next/link";
+import { siteConfig } from "@/config/site";
 
 // ────────────────────────────────────────────────
 // Types
@@ -493,7 +494,7 @@ export default function WebhooksAndCallbacks() {
         <Link
           target="_blank"
           rel="noopener noreferrer"
-          href="https://durapayment-api.docs.buildwithfern.com/durapayment-api/introduction"
+          href={siteConfig.docUrl}
           className="text-accent hover:underline"
         >
           Read the integration docs →

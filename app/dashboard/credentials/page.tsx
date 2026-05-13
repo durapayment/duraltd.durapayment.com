@@ -19,6 +19,7 @@ import {
 import clsx from "clsx";
 import { Tabs, ProgressCircle } from "@heroui/react";
 import Link from "next/link";
+import { siteConfig } from "@/config/site";
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -980,7 +981,7 @@ export default function ApiKeys() {
         <Link
           target="_blank"
           rel="noopener noreferrer"
-          href="https://durapayment-api.docs.buildwithfern.com/durapayment-api/introduction"
+          href={siteConfig.docUrl}
           className="text-accent hover:underline"
         >
           Read the integration docs →
