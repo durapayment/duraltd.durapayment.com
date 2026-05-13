@@ -1,14 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Search, Download, RefreshCw, Clock, User, Globe } from "lucide-react";
-import clsx from "clsx";
+import {
+  RiSearchLine,
+  RiRefreshLine,
+  RiShieldCheckLine,
+  RiErrorWarningLine,
+  RiInformationLine,
+  RiAlertLine,
+  RiFilterLine,
+  RiCalendarLine,
+} from "react-icons/ri";
 import { Table } from "@heroui/react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import React from "react";
 
-// ─────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────
-interface ActivityLog {
+interface LogEntry {
   id: string;
   timestamp: string;
   actor: string;
@@ -16,368 +22,475 @@ interface ActivityLog {
   description: string;
   ip: string;
   status: "success" | "error" | "warning" | "info";
-  details?: string;
-  action_type?: string;
+  details: string | null;
 }
 
-// Sample Data
-const SAMPLE_LOGS: ActivityLog[] = [
-  {
-    id: "log_1",
-    timestamp: "2026-05-01 09:34:12",
-    actor: "John Doe",
-    action: "API Key Created",
-    description: "New test API key was generated",
-    ip: "102.88.104.23",
-    status: "success",
-    action_type: "api_key",
-  },
-  {
-    id: "log_2",
-    timestamp: "2026-04-30 14:22:45",
-    actor: "System",
-    action: "Webhook Updated",
-    description: "Webhook URL changed for live mode",
-    ip: "172.16.5.10",
-    status: "success",
-    action_type: "webhook",
-  },
-  {
-    id: "log_3",
-    timestamp: "2026-04-30 11:05:33",
-    actor: "Jane Smith",
-    action: "Login Attempt",
-    description: "Failed login attempt from unknown device",
-    ip: "197.210.45.67",
-    status: "error",
-    action_type: "login",
-  },
-  {
-    id: "log_4",
-    timestamp: "2026-04-29 16:48:09",
-    actor: "John Doe",
-    action: "IP Whitelist Added",
-    description: "Added new IP to live key whitelist",
-    ip: "102.88.104.23",
-    status: "success",
-    action_type: "api_key",
-  },
+interface PaginationMeta {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number | null;
+  to: number | null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractLogs(data: any): LogEntry[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (data.data && Array.isArray(data.data)) return data.data;
+  return [];
+}
+
+const ACTION_FILTERS = [
+  { value: "all", label: "All Actions" },
+  { value: "user", label: "User" },
+  { value: "api_key", label: "API Key" },
+  { value: "webhook", label: "Webhook" },
+  { value: "business", label: "Business" },
+  { value: "transaction", label: "Transaction" },
+  { value: "ip_whitelist", label: "IP Whitelist" },
 ];
 
-// Status Badge
-function StatusBadge({ status }: { status: ActivityLog["status"] }) {
-  const styles = {
-    success: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    error: "bg-red-100 text-red-700 border-red-200",
-    warning: "bg-amber-100 text-amber-700 border-amber-200",
-    info: "bg-blue-100 text-blue-700 border-blue-200",
-  };
+const STATUS_FILTERS = [
+  { value: "all", label: "All" },
+  { value: "success", label: "Success" },
+  { value: "error", label: "Error" },
+  { value: "warning", label: "Warning" },
+  { value: "info", label: "Info" },
+];
 
-  const icons = {
-    success: "✓",
-    error: "✕",
-    warning: "⚠",
-    info: "ℹ",
-  };
+const DATE_FILTERS = [
+  { value: "all", label: "All Time" },
+  { value: "last7days", label: "Last 7 days" },
+  { value: "last30days", label: "Last 30 days" },
+  { value: "this_month", label: "This month" },
+];
 
+const PER_PAGE = 20;
+
+function formatTimestamp(ts: string): { date: string; time: string } {
+  const d = new Date(ts);
+  return {
+    date: d.toLocaleDateString("en-NG", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }),
+    time: d.toLocaleTimeString("en-NG", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }),
+  };
+}
+
+function StatusBadge({ status }: { status: LogEntry["status"] }) {
+  const config: Record<
+    LogEntry["status"],
+    { cls: string; icon: React.ReactNode; label: string }
+  > = {
+    success: {
+      cls: "bg-green-50 text-green-700",
+      icon: <RiShieldCheckLine size={12} />,
+      label: "Success",
+    },
+    error: {
+      cls: "bg-red-50 text-red-700",
+      icon: <RiErrorWarningLine size={12} />,
+      label: "Error",
+    },
+    warning: {
+      cls: "bg-amber-50 text-amber-700",
+      icon: <RiAlertLine size={12} />,
+      label: "Warning",
+    },
+    info: {
+      cls: "bg-blue-50 text-blue-700",
+      icon: <RiInformationLine size={12} />,
+      label: "Info",
+    },
+  };
+  const { cls, icon, label } = config[status] ?? config.info;
   return (
-    <div
-      className={clsx(
-        "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border",
-        styles[status],
-      )}
+    <span
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${cls}`}
     >
-      <span>{icons[status]}</span>
-      <span className="capitalize">{status}</span>
-    </div>
+      {icon}
+      {label}
+    </span>
   );
 }
 
-export default function ActivityLogs() {
-  const [logs] = useState<ActivityLog[]>(SAMPLE_LOGS);
-  const [filteredLogs, setFilteredLogs] = useState<ActivityLog[]>(SAMPLE_LOGS);
+function ActionBadge({ action }: { action: string }) {
+  const prefix = action.split(".")[0] ?? action;
+  const colors: Record<string, string> = {
+    user: "bg-purple-50 text-purple-700",
+    api_key: "bg-indigo-50 text-indigo-700",
+    webhook: "bg-cyan-50 text-cyan-700",
+    business: "bg-orange-50 text-orange-700",
+    transaction: "bg-green-50 text-green-700",
+    ip_whitelist: "bg-pink-50 text-pink-700",
+  };
+  const cls = colors[prefix] ?? "bg-gray-100 text-gray-600";
+  return (
+    <span
+      className={`inline-flex px-2.5 py-1 rounded-md text-xs font-mono font-medium ${cls}`}
+    >
+      {action}
+    </span>
+  );
+}
 
-  const [searchQuery, setSearchQuery] = useState("");
+export default function ActivityLogsPage() {
+  const [searchTerm, setSearchTerm] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
+  const [dateFilter, setDateFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
-  const ACTION_TYPES = [
-    { value: "all", label: "All Actions" },
-    { value: "api_key", label: "API Keys" },
-    { value: "webhook", label: "Webhooks" },
-    { value: "login", label: "Login / Auth" },
-  ];
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const STATUS_TYPES = [
-    { value: "all", label: "All Statuses" },
-    { value: "success", label: "Success" },
-    { value: "error", label: "Error" },
-    { value: "warning", label: "Warning" },
-    { value: "info", label: "Info" },
-  ];
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // Filtering Logic
+  const fetchLogs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        per_page: String(PER_PAGE),
+      });
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (actionFilter !== "all") params.set("action", actionFilter);
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (dateFilter !== "all") params.set("date_range", dateFilter);
+
+      const res = await fetch(`/api/logs?${params.toString()}`);
+
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to load activity logs");
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const json: any = await res.json();
+      setLogs(extractLogs(json.data));
+      setMeta(json.meta ?? null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, debouncedSearch, actionFilter, statusFilter, dateFilter]);
+
   useEffect(() => {
-    let result = [...logs];
+    fetchLogs();
+  }, [fetchLogs]);
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((log) =>
-        [log.description, log.actor, log.action, log.ip].some((field) =>
-          field.toLowerCase().includes(q),
-        ),
-      );
-    }
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearchTerm(val);
+    setCurrentPage(1);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => setDebouncedSearch(val), 400);
+  };
 
-    if (actionFilter !== "all") {
-      result = result.filter((log) => log.action_type === actionFilter);
-    }
+  const handleFilter = (setter: (v: string) => void) => (value: string) => {
+    setter(value);
+    setCurrentPage(1);
+  };
 
-    if (statusFilter !== "all") {
-      result = result.filter((log) => log.status === statusFilter);
-    }
-
-    setFilteredLogs(result);
-  }, [logs, searchQuery, actionFilter, statusFilter]);
-
-  const handleViewDetails = (log: ActivityLog) => setSelectedLog(log);
-  const closeModal = () => setSelectedLog(null);
+  const totalPages = meta?.last_page ?? 1;
 
   return (
-    <section className="max-w-7xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
-          Activity Logs
-        </h1>
-        <p className="text-sm md:text-base text-gray-500 mt-1">
-          Track all important actions, security events, and configuration
-          changes.
-        </p>
-      </div>
-
-      {/* Filters */}
-      <div className="mb-6 space-y-4">
-        <div className="relative">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-            size={18}
-          />
-          <input
-            type="text"
-            placeholder="Search logs by description, actor, action or IP..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3  border border-gray-200 rounded-2xl focus:border-violet-500 focus:ring-1 focus:ring-violet-200 outline-none"
-          />
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <select
-            value={actionFilter}
-            onChange={(e) => setActionFilter(e.target.value)}
-            className="px-4 py-3  border border-gray-200 rounded-2xl text-sm focus:border-violet-500 outline-none w-full sm:w-auto"
-          >
-            {ACTION_TYPES.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-3  border border-gray-200 rounded-2xl text-sm focus:border-violet-500 outline-none w-full sm:w-auto"
-          >
-            {STATUS_TYPES.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-
+    <div className="w-full flex h-full flex-col items-center">
+      <div className="max-w-310 flex flex-col gap-6 flex-1 w-full">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row gap-4 md:gap-0 justify-between items-start md:items-center mt-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">
+              Activity Logs
+            </h1>
+            <p className="text-gray-500 text-sm mt-1">
+              Track all actions and events on your account
+            </p>
+          </div>
           <button
-            onClick={() => {
-              setSearchQuery("");
-              setActionFilter("all");
-              setStatusFilter("all");
-            }}
-            className="px-5 py-3 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors flex items-center gap-2"
+            onClick={fetchLogs}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            <RefreshCw size={16} />
-            Reset Filters
-          </button>
-
-          <button className="sm:ml-auto flex items-center gap-2 px-5 py-3  border border-gray-200 hover:border-gray-300 rounded-2xl text-sm font-medium text-gray-700">
-            <Download size={16} />
-            Export CSV
+            <RiRefreshLine
+              size={16}
+              className={loading ? "animate-spin" : ""}
+            />
+            Refresh
           </button>
         </div>
-      </div>
 
-      {/* HeroUI Table */}
-      <div className="rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <Table variant="secondary">
+        {/* Search + Filters */}
+        <div className="flex flex-col gap-3">
+          {/* Search bar */}
+          <div className="relative w-full md:max-w-md">
+            <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              value={searchTerm}
+              onChange={handleSearch}
+              placeholder="Search by action, IP address, or user..."
+              className="px-10 py-2 rounded-full bg-white outline-none w-full border border-gray-200 focus:border-gray-400 text-sm"
+            />
+          </div>
+
+          {/* Filter rows */}
+          <div className="flex flex-wrap gap-3 items-center">
+            {/* Action filter */}
+            <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-full px-3 py-1.5">
+              <RiFilterLine size={14} className="text-gray-400" />
+              <select
+                value={actionFilter}
+                onChange={(e) => handleFilter(setActionFilter)(e.target.value)}
+                className="text-sm text-gray-700 bg-transparent outline-none cursor-pointer"
+              >
+                {ACTION_FILTERS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status pills */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {STATUS_FILTERS.map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => handleFilter(setStatusFilter)(s.value)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                    statusFilter === s.value
+                      ? "bg-gray-900 text-white"
+                      : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Date range */}
+            <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-full px-3 py-1.5 ml-auto">
+              <RiCalendarLine size={14} className="text-gray-400" />
+              <select
+                value={dateFilter}
+                onChange={(e) => handleFilter(setDateFilter)(e.target.value)}
+                className="text-sm text-gray-700 bg-transparent outline-none cursor-pointer"
+              >
+                {DATE_FILTERS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex justify-between items-center">
+            <span>{error}</span>
+            <button onClick={fetchLogs} className="underline text-red-600 ml-4">
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Table */}
+        <Table variant="secondary" aria-label="Activity Logs Table">
           <Table.ScrollContainer>
-            <Table.Content
-              aria-label="Activity Logs"
-              className="min-w-[900px]" // Important for horizontal scroll on mobile
-            >
-              <Table.Header className={"rounded-sm"}>
-                <Table.Column isRowHeader>Timestamp</Table.Column>
-                <Table.Column>Actor</Table.Column>
-                <Table.Column>Action</Table.Column>
-                <Table.Column>Description</Table.Column>
-                <Table.Column>IP Address</Table.Column>
-                <Table.Column className={"text-center"}>Status</Table.Column>
+            <Table.Content>
+              <Table.Header>
+                <Table.Column isRowHeader>TIMESTAMP</Table.Column>
+                <Table.Column>ACTION</Table.Column>
+                <Table.Column>DESCRIPTION</Table.Column>
+                <Table.Column>ACTOR</Table.Column>
+                <Table.Column>IP ADDRESS</Table.Column>
+                <Table.Column>STATUS</Table.Column>
               </Table.Header>
-
               <Table.Body>
-                {filteredLogs.length === 0 ? (
+                {loading ? (
+                  Array.from({ length: 8 }).map((_, i) => (
+                    <Table.Row key={i}>
+                      {Array.from({ length: 6 }).map((_, j) => (
+                        <Table.Cell key={j}>
+                          <div className="h-4 bg-gray-100 rounded animate-pulse w-full max-w-[140px]" />
+                        </Table.Cell>
+                      ))}
+                    </Table.Row>
+                  ))
+                ) : logs.length === 0 ? (
                   <Table.Row>
                     <Table.Cell
                       colSpan={6}
-                      className="py-20 text-center text-gray-500"
+                      className="text-center py-12 text-gray-400 text-sm"
                     >
-                      No matching activity logs found
+                      No activity logs found
                     </Table.Cell>
                   </Table.Row>
                 ) : (
-                  filteredLogs.map((log) => (
-                    <Table.Row
-                      key={log.id}
-                      onClick={() => handleViewDetails(log)}
-                      className="hover:bg-gray-50 cursor-pointer transition-colors"
-                    >
-                      <Table.Cell>
-                        <div className="flex items-center text-nowrap gap-2 text-sm text-gray-600">
-                          <Clock size={15} className="text-gray-400" />
-                          {log.timestamp}
-                        </div>
-                      </Table.Cell>
+                  logs.map((log) => {
+                    const { date, time } = formatTimestamp(log.timestamp);
+                    const isExpanded = expandedRow === log.id;
+                    return (
+                      <React.Fragment key={log.id}>
+                        <Table.Row
+                          key={log.id}
+                          className={`cursor-pointer hover:bg-gray-50 transition-colors ${isExpanded ? "bg-gray-50" : ""}`}
+                          onClick={() =>
+                            setExpandedRow(isExpanded ? null : log.id)
+                          }
+                        >
+                          <Table.Cell>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900 text-nowrap">
+                                {date}
+                              </p>
+                              <p className="text-xs text-gray-400 font-mono">
+                                {time}
+                              </p>
+                            </div>
+                          </Table.Cell>
 
-                      <Table.Cell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                            <User size={16} className="text-gray-500" />
-                          </div>
-                          <span className="text-nowrap font-medium text-gray-900">
-                            {log.actor}
-                          </span>
-                        </div>
-                      </Table.Cell>
+                          <Table.Cell>
+                            <ActionBadge action={log.action} />
+                          </Table.Cell>
 
-                      <Table.Cell className="text-nowrap font-medium text-gray-800">
-                        {log.action}
-                      </Table.Cell>
+                          <Table.Cell>
+                            <p className="text-sm text-gray-700 max-w-xs truncate">
+                              {log.description || "—"}
+                            </p>
+                          </Table.Cell>
 
-                      <Table.Cell className="text-nowrap text-sm text-gray-600 max-w-xs">
-                        {log.description}
-                      </Table.Cell>
+                          <Table.Cell>
+                            <p className="text-sm text-gray-700 text-nowrap">
+                              {log.actor}
+                            </p>
+                          </Table.Cell>
 
-                      <Table.Cell>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Globe size={15} className="text-gray-400" />
-                          <span className="font-mono">{log.ip}</span>
-                        </div>
-                      </Table.Cell>
+                          <Table.Cell>
+                            <p className="text-sm font-mono text-gray-500 text-nowrap">
+                              {log.ip}
+                            </p>
+                          </Table.Cell>
 
-                      <Table.Cell>
-                        <StatusBadge status={log.status} />
-                      </Table.Cell>
-                    </Table.Row>
-                  ))
+                          <Table.Cell>
+                            <StatusBadge status={log.status} />
+                          </Table.Cell>
+                        </Table.Row>
+
+                        {/* Expanded details row */}
+                        {isExpanded && log.details && (
+                          <Table.Row key={`${log.id}-details`}>
+                            <Table.Cell colSpan={6}>
+                              <div className="py-2 px-3 bg-gray-50 rounded-lg">
+                                <p className="text-xs text-gray-500 font-medium mb-1.5 uppercase tracking-wide">
+                                  Details
+                                </p>
+                                <pre className="text-xs text-gray-700 font-mono whitespace-pre-wrap break-all bg-white border border-gray-100 rounded-lg p-3 max-h-48 overflow-auto">
+                                  {(() => {
+                                    try {
+                                      return JSON.stringify(
+                                        JSON.parse(log.details),
+                                        null,
+                                        2,
+                                      );
+                                    } catch {
+                                      return log.details;
+                                    }
+                                  })()}
+                                </pre>
+                              </div>
+                            </Table.Cell>
+                          </Table.Row>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
                 )}
               </Table.Body>
             </Table.Content>
           </Table.ScrollContainer>
         </Table>
 
-        {/* Footer Info */}
-        <div className="px-6 py-5 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row justify-between items-center text-sm text-gray-600">
-          <p>
-            Showing <strong>1–{filteredLogs.length}</strong> of{" "}
-            <strong>{filteredLogs.length}</strong> logs
-          </p>
-          <p className="text-xs text-gray-400 mt-2 sm:mt-0">
-            Activity logs are retained for <strong>90 days</strong>.
-          </p>
-        </div>
-      </div>
-
-      {/* Detail Modal - Same as before */}
-      {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className=" rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden">
-            {/* Modal content remains the same as previous version */}
-            <div className="px-8 pt-6 pb-4 border-b flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold">Activity Details</h2>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  {selectedLog.timestamp}
-                </p>
-              </div>
+        {/* Pagination */}
+        {!loading && totalPages > 1 && meta && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-4">
+            <p className="text-sm text-gray-500">
+              Showing {meta.from ?? 0}–{meta.to ?? 0} of {meta.total} logs
+            </p>
+            <div className="flex items-center gap-1">
               <button
-                onClick={closeModal}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+                className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
               >
-                ✕
+                Previous
               </button>
-            </div>
-
-            <div className="p-8 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-xs uppercase tracking-widest text-gray-500 mb-1">
-                    Actor
-                  </p>
-                  <p className="font-medium">{selectedLog.actor}</p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-widest text-gray-500 mb-1">
-                    IP Address
-                  </p>
-                  <p className="font-mono text-sm">{selectedLog.ip}</p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs uppercase tracking-widest text-gray-500 mb-1">
-                  Action
-                </p>
-                <p className="font-semibold text-lg">{selectedLog.action}</p>
-              </div>
-
-              <div>
-                <p className="text-xs uppercase tracking-widest text-gray-500 mb-1">
-                  Description
-                </p>
-                <p className="text-gray-700 leading-relaxed">
-                  {selectedLog.description}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs uppercase tracking-widest text-gray-500 mb-1">
-                  Status
-                </p>
-                <StatusBadge status={selectedLog.status} />
-              </div>
-            </div>
-
-            <div className="px-8 py-5 border-t bg-gray-50 flex justify-end">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(
+                  (p) =>
+                    p === 1 ||
+                    p === totalPages ||
+                    Math.abs(p - currentPage) <= 1,
+                )
+                .reduce<(number | "...")[]>((acc, p, i, arr) => {
+                  if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("...");
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((item, i) =>
+                  item === "..." ? (
+                    <span key={`ellipsis-${i}`} className="px-2 text-gray-400">
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={item}
+                      onClick={() => setCurrentPage(item as number)}
+                      className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                        item === currentPage
+                          ? "bg-gray-900 text-white border-gray-900"
+                          : "border-gray-200 hover:bg-gray-50"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  ),
+                )}
               <button
-                onClick={closeModal}
-                className="px-6 py-2.5 bg-gray-900 text-white rounded-2xl font-medium hover:bg-black transition-colors"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+                className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
               >
-                Close
+                Next
               </button>
             </div>
           </div>
-        </div>
-      )}
-    </section>
+        )}
+
+        <div className="h-10" />
+      </div>
+    </div>
   );
 }
