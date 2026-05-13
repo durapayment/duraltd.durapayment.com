@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(request: NextRequest) {
   try {
     const accessToken = request.cookies.get("access_token")?.value;
-
     if (!accessToken) {
       return NextResponse.json(
         { status: 401, message: "Unauthorized" },
@@ -12,18 +11,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { api_key_id, ip } = body;
 
-    if (!api_key_id || !ip) {
-      return NextResponse.json(
-        { status: 400, message: "api_key_id and ip are required" },
-        { status: 400 },
-      );
-    }
-
-    // Laravel route: POST /api/user/api-keys/{apiKey}/ip/remove
     const response = await fetch(
-      `${process.env.LARAVEL_API_URL}/api/user/api-keys/${api_key_id}/ip/remove`,
+      `${process.env.LARAVEL_API_URL}/api/user/webhook`,
       {
         method: "POST",
         headers: {
@@ -31,20 +21,15 @@ export async function POST(request: NextRequest) {
           Authorization: `Bearer ${accessToken}`,
           Accept: "application/json",
         },
-        body: JSON.stringify({ ip }),
+        body: JSON.stringify({ webhook: body.webhook }),
         cache: "no-store",
       },
     );
 
     const data = await response.json();
-
-    if (!response.ok) {
-      return NextResponse.json(data, { status: response.status });
-    }
-
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error("Remove IP route error:", error);
+    console.error("Webhook save error:", error);
     return NextResponse.json(
       { status: 500, message: "Internal server error" },
       { status: 500 },

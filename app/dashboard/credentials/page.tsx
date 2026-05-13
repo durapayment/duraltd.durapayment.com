@@ -329,7 +329,7 @@ function KeyCard({
   return (
     <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
       <div
-        className="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
+        className="flex flex-col lg:flex-row flex-start gap-3 lg:gap-0 lg:items-center justify-between px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
         onClick={() => setExpanded((v) => !v)}
       >
         <div className="flex items-center gap-3">
@@ -354,9 +354,9 @@ function KeyCard({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={apiKey.mode === "live" ? "red" : "blue"}>
+          {/* <Badge variant={apiKey.mode === "live" ? "red" : "blue"}>
             {apiKey.mode}
-          </Badge>
+          </Badge> */}
           {apiKey.allowed_ips.length > 0 && (
             <Badge variant="violet">
               {apiKey.allowed_ips.length} IP
@@ -857,7 +857,7 @@ export default function ApiKeys() {
 
   if (pageLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[300px]">
+      <div className="flex items-center justify-center mt-10">
         <ProgressCircle isIndeterminate aria-label="Loading API keys...">
           <ProgressCircle.Track>
             <ProgressCircle.TrackCircle />

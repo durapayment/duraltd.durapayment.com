@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import {
   Copy,
   Eye,
@@ -13,83 +12,92 @@ import {
   XCircle,
   Clock,
   Loader2,
-  type LucideProps,
   Paperclip,
+  type LucideProps,
 } from "lucide-react";
 import { ProgressCircle, Toast, toast } from "@heroui/react";
 import clsx from "clsx";
-import { Card, CardHeader, CardBody } from "@heroui/card";
-import { Button, Input, Spinner } from "@heroui/react";
+import { Button, Spinner } from "@heroui/react";
 
 // ────────────────────────────────────────────────
-// Utility: generate a random webhook signing secret
+// Types
 // ────────────────────────────────────────────────
-function generateSecret(): string {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const randomPart = Array.from({ length: 24 }, () =>
-    chars.charAt(Math.floor(Math.random() * chars.length)),
-  ).join("");
-  return `whsec_${randomPart}`;
+type DeliveryStatus = "waiting" | "success" | "failed";
+
+interface DeliveryState {
+  time: string;
+  status: DeliveryStatus;
 }
 
 // ────────────────────────────────────────────────
-// Initial mock data
+// Delivery icon helper
 // ────────────────────────────────────────────────
-const INITIAL_SECRET = generateSecret();
+function GetDeliveryIcon({
+  status,
+  ...props
+}: { status: DeliveryStatus } & LucideProps) {
+  const Icon =
+    status === "success" ? CheckCircle2 : status === "failed" ? XCircle : Clock;
+  return <Icon {...props} />;
+}
 
-const MOCK_WEBHOOK = {
-  url: "https://api.yourapp.com/webhook/payment",
-  secret: INITIAL_SECRET,
-  events: [
-    "charge.success",
-    "charge.failed",
-    "transfer.success",
-    "subscription.create",
-    "subscription.cancel",
-  ],
-  last_delivery: {
-    time: "Just now",
-    status: "waiting",
-  },
-};
-
-const COMMON_EVENTS = [
-  { id: "charge.success", label: "Successful payment", critical: true },
-  { id: "charge.failed", label: "Failed payment" },
-  { id: "transfer.success", label: "Transfer completed" },
-  { id: "transfer.failed", label: "Transfer failed" },
-];
-
+// ────────────────────────────────────────────────
+// Page
+// ────────────────────────────────────────────────
 export default function WebhooksAndCallbacks() {
-  const router = useRouter();
+  // ── Page load state ───────────────────────────
+  const [pageLoading, setPageLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
 
-  // ── Auth / page state ──────────────────────────
-  // loading is false from the start — fully simulated, no server
-  const [loading, setLoading] = useState(false);
-  const [user] = useState<any>({ name: "Demo User" }); // always "logged in"
-
-  // ── Webhook URL ────────────────────────────────
-  const [webhookUrl, setWebhookUrl] = useState(MOCK_WEBHOOK.url);
+  // ── Webhook URL ───────────────────────────────
+  const [webhookUrl, setWebhookUrl] = useState("");
   const [editingUrl, setEditingUrl] = useState(false);
+  const [urlDraft, setUrlDraft] = useState("");
   const [urlError, setUrlError] = useState("");
   const [savingUrl, setSavingUrl] = useState(false);
 
-  // ── Signing Secret ─────────────────────────────
+  // ── Signing Secret ────────────────────────────
+  const [secret, setSecret] = useState<string | null>(null);
   const [showSecret, setShowSecret] = useState(false);
-  const [secret, setSecret] = useState(MOCK_WEBHOOK.secret);
   const [regeneratingSecret, setRegeneratingSecret] = useState(false);
 
-  // ── Events ─────────────────────────────────────
-  const [selectedEvents, setSelectedEvents] = useState<string[]>(
-    MOCK_WEBHOOK.events,
-  );
-
-  // ── Test Delivery ──────────────────────────────
+  // ── Test Delivery ─────────────────────────────
   const [sendingTest, setSendingTest] = useState(false);
-  const [lastDelivery, setLastDelivery] = useState(MOCK_WEBHOOK.last_delivery);
+  const [lastDelivery, setLastDelivery] = useState<DeliveryState | null>(null);
 
-  // ── Helpers ────────────────────────────────────
+  // ── Load business data on mount ───────────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/user");
+        if (res.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+        if (!res.ok) throw new Error("Failed to load account data");
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const json: any = await res.json();
+
+        // Support both { data: { business: {...} } } and { data: { webhook_url, secrete_hash } }
+        console.log("user API response:", json); // remove after debugging
+
+        const business =
+          json?.data?.business ?? json?.business ?? json?.data ?? json ?? {};
+
+        console.log("business object:", business); // remove after debugging
+
+        setWebhookUrl(business.webhook_url ?? "");
+        setSecret(business.secrete_hash ?? null);
+      } catch (err: unknown) {
+        setPageError(err instanceof Error ? err.message : "Failed to load");
+      } finally {
+        setPageLoading(false);
+      }
+    })();
+  }, []);
+
+  // ── Helpers ───────────────────────────────────
   const validateUrl = (url: string) => {
     try {
       new URL(url);
@@ -99,121 +107,156 @@ export default function WebhooksAndCallbacks() {
     }
   };
 
-  // ── Handlers ───────────────────────────────────
+  const copyToClipboard = async (text: string, msg = "Copied!") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(msg);
+    } catch {
+      toast.danger("Copy failed");
+    }
+  };
+
+  // ── Handlers ──────────────────────────────────
+  const handleStartEdit = () => {
+    setUrlDraft(webhookUrl);
+    setUrlError("");
+    setEditingUrl(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUrl(false);
+    setUrlError("");
+  };
 
   const handleSaveUrl = async () => {
-    if (!webhookUrl.trim()) {
+    if (!urlDraft.trim()) {
       setUrlError("Webhook URL is required");
       return;
     }
-    if (!validateUrl(webhookUrl)) {
-      setUrlError("Please enter a valid HTTPS URL");
+    if (!validateUrl(urlDraft)) {
+      setUrlError("Must be a valid HTTPS URL");
       return;
     }
 
     setSavingUrl(true);
     setUrlError("");
 
-    // Simulate network delay
-    await new Promise((r) => setTimeout(r, 900));
+    try {
+      const res = await fetch("/api/webhook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ webhook: urlDraft }),
+      });
 
-    toast.success("Webhook URL updated", {
-      description: "Your webhook endpoint has been saved.",
-    });
-    setEditingUrl(false);
-    setSavingUrl(false);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to save webhook URL");
+      }
+
+      setWebhookUrl(urlDraft);
+      setEditingUrl(false);
+      toast.success("Webhook URL saved");
+    } catch (err: unknown) {
+      setUrlError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSavingUrl(false);
+    }
   };
 
   const handleRegenerateSecret = async () => {
     setRegeneratingSecret(true);
+    try {
+      const res = await fetch("/api/webhook/regenerate-secret", {
+        method: "POST",
+      });
 
-    // Simulate network delay
-    await new Promise((r) => setTimeout(r, 1000));
+      const data = await res.json();
 
-    const newSecret = generateSecret();
-    setSecret(newSecret);
-    setShowSecret(true); // auto-reveal so the user can see (and copy) the new secret
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to regenerate secret");
+      }
 
-    toast.warning("Signing secret regenerated", {
-      description: "Your old secret will no longer work. Copy the new one now.",
-    });
-
-    setRegeneratingSecret(false);
+      setSecret(data.secret_hash);
+      setShowSecret(true);
+      toast.warning("Signing secret regenerated — copy it now");
+    } catch (err: unknown) {
+      toast.danger(err instanceof Error ? err.message : "Failed to regenerate");
+    } finally {
+      setRegeneratingSecret(false);
+    }
   };
 
   const handleTestDelivery = async () => {
+    if (!webhookUrl) {
+      toast.danger("Set a webhook URL first");
+      return;
+    }
+
     setSendingTest(true);
     setLastDelivery({ time: "Just now", status: "waiting" });
 
-    // Simulate network delay
-    await new Promise((r) => setTimeout(r, 1800));
-
-    const simulatedSuccess = Math.random() > 0.25;
-    const newStatus = simulatedSuccess ? "success" : "failed";
-
-    setLastDelivery({ time: "Just now", status: newStatus });
-
-    if (simulatedSuccess) {
-      toast.success("Test webhook sent", {
-        description: "Check your server logs for the payload.",
-      });
-    } else {
-      toast.danger("Test delivery failed", {
-        description: "Your endpoint did not respond correctly.",
-      });
-    }
-
-    setSendingTest(false);
-  };
-
-  const copyToClipboard = async (text: string, successMsg = "Copied!") => {
     try {
-      await navigator.clipboard.writeText(text);
-      toast.success(successMsg);
+      const res = await fetch("/api/webhook/test", { method: "POST" });
+      const data = await res.json();
+
+      if (!res.ok || data.status === "error") {
+        setLastDelivery({ time: "Just now", status: "failed" });
+        toast.danger("Test delivery failed", {
+          description:
+            data.message || "Your endpoint did not respond correctly.",
+        });
+      } else {
+        setLastDelivery({ time: "Just now", status: "success" });
+        toast.success("Test webhook delivered", {
+          description: "Check your server logs for the payload.",
+        });
+      }
     } catch {
-      toast.danger("Copy failed", { description: "Please try again." });
+      setLastDelivery({ time: "Just now", status: "failed" });
+      toast.danger("Test delivery failed");
+    } finally {
+      setSendingTest(false);
     }
   };
 
-  // ── Render guards ──────────────────────────────
-
-  if (loading) {
+  // ── Render guards ─────────────────────────────
+  if (pageLoading) {
     return (
-      <div className="flex items-center justify-center mt-10">
-        <ProgressCircle aria-label="Loading..." className="text-primary" />
+      <div className="flex items-center justify-center min-h-[300px]">
+        <ProgressCircle isIndeterminate aria-label="Loading...">
+          <ProgressCircle.Track>
+            <ProgressCircle.TrackCircle />
+            <ProgressCircle.FillCircle />
+          </ProgressCircle.Track>
+        </ProgressCircle>
       </div>
     );
   }
 
-  if (!user) return null;
+  if (pageError) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="text-sm text-red-600 mb-3">{pageError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-xl border border-red-300 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  // ── Delivery status helpers ────────────────────
-
-  const deliveryStatusColor: Record<string, string> = {
+  const deliveryStatusColor: Record<DeliveryStatus, string> = {
     waiting: "bg-gray-100 text-gray-700",
     success: "bg-green-100 text-green-800",
     failed: "bg-red-100 text-red-800",
   };
 
-  const GetDeliveryIcon = ({
-    status,
-    ...props
-  }: { status: string } & LucideProps) => {
-    const Icon = (() => {
-      switch (status) {
-        case "success":
-          return CheckCircle2;
-        case "failed":
-          return XCircle;
-        default:
-          return Clock;
-      }
-    })();
-    return <Icon {...props} />;
-  };
-
-  // ── JSX ────────────────────────────────────────
-
+  // ── JSX ───────────────────────────────────────
   return (
     <section className="p-3.75 max-w-5xl mx-auto">
       {/* Header */}
@@ -226,33 +269,23 @@ export default function WebhooksAndCallbacks() {
         </p>
       </div>
 
-      {/* Webhook URL */}
+      {/* ── Webhook URL ── */}
       <div className="mb-8 p-5 rounded-lg bg-background border border-default-200">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[17px] font-medium">Webhook Endpoint URL</h3>
           {!editingUrl ? (
-            <Button
-              size="sm"
-              variant="outline"
-              onPress={() => setEditingUrl(true)}
-            >
+            <Button size="sm" variant="outline" onPress={handleStartEdit}>
               Edit
             </Button>
           ) : (
             <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onPress={() => {
-                  setEditingUrl(false);
-                  setUrlError("");
-                }}
-              >
+              <Button size="sm" variant="outline" onPress={handleCancelEdit}>
                 Cancel
               </Button>
               <Button
                 variant="primary"
                 size="sm"
+                className={"text-white"}
                 onPress={handleSaveUrl}
                 isPending={savingUrl}
               >
@@ -274,11 +307,12 @@ export default function WebhooksAndCallbacks() {
         {editingUrl ? (
           <div>
             <input
-              value={webhookUrl}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                setWebhookUrl(e.target.value);
+              value={urlDraft}
+              onChange={(e) => {
+                setUrlDraft(e.target.value);
                 setUrlError("");
               }}
+              onKeyDown={(e) => e.key === "Enter" && handleSaveUrl()}
               placeholder="https://your-server.com/webhook"
               className="placeholder:text-default-500 border px-4 py-2 rounded-md w-full outline-none placeholder:opacity-80"
             />
@@ -288,7 +322,13 @@ export default function WebhooksAndCallbacks() {
           </div>
         ) : (
           <div className="flex flex-col sm:flex-row items-start gap-3 bg-content2 p-3 rounded-md font-mono text-[15px] break-all">
-            <code className="flex-1">{webhookUrl || "Not configured yet"}</code>
+            <code className="flex-1">
+              {webhookUrl || (
+                <span className="text-gray-400 italic not-italic font-sans text-sm">
+                  No webhook URL configured yet
+                </span>
+              )}
+            </code>
             {webhookUrl && (
               <Button
                 size="sm"
@@ -303,17 +343,17 @@ export default function WebhooksAndCallbacks() {
         )}
 
         <p className="text-xs text-gray-500 mt-3">
-          We'll send POST requests with event data to this URL.
+          We&apos;ll send POST requests with event data to this URL.
         </p>
       </div>
 
-      {/* Signing Secret */}
+      {/* ── Signing Secret ── */}
       <div className="mb-8 p-5 rounded-lg bg-background border border-default-200">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-[17px] font-[500]">Webhook Signing Secret</h3>
             <p className="text-sm text-gray-500 mt-0.5">
-              Use this to verify requests (recommended)
+              Use this to verify incoming requests
             </p>
           </div>
           <Button
@@ -337,29 +377,40 @@ export default function WebhooksAndCallbacks() {
 
         <div className="flex flex-col sm:flex-row items-start gap-3 bg-content2 p-3 rounded-md font-mono break-all text-[15px]">
           <code className="flex-1 select-none">
-            {showSecret ? secret : "••••••••••••••••••••••••••••••••"}
+            {secret ? (
+              showSecret ? (
+                secret
+              ) : (
+                "•".repeat(Math.min(secret.length, 40))
+              )
+            ) : (
+              <span className="text-gray-400 italic not-italic font-sans text-sm">
+                No secret yet — click Regenerate
+              </span>
+            )}
           </code>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onPress={() => setShowSecret(!showSecret)}
-            >
-              {showSecret ? <EyeOff size={16} /> : <Eye size={16} />}
-              {showSecret ? "Hide" : "Reveal"}
-            </Button>
-
-            {showSecret && (
+          {secret && (
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 size="sm"
                 variant="ghost"
-                onPress={() => copyToClipboard(secret, "Secret copied!")}
+                onPress={() => setShowSecret((v) => !v)}
               >
-                <Copy size={16} />
-                Copy
+                {showSecret ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showSecret ? "Hide" : "Reveal"}
               </Button>
-            )}
-          </div>
+              {showSecret && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onPress={() => copyToClipboard(secret, "Secret copied!")}
+                >
+                  <Copy size={16} />
+                  Copy
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         <p className="text-xs text-gray-500 mt-2 italic">
@@ -367,7 +418,7 @@ export default function WebhooksAndCallbacks() {
         </p>
       </div>
 
-      {/* Recent Deliveries */}
+      {/* ── Test Delivery ── */}
       <div className="mb-8 p-5 rounded-lg bg-background border border-default-200">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[17px] font-medium">Recent Deliveries</h3>
@@ -418,33 +469,29 @@ export default function WebhooksAndCallbacks() {
           </div>
         ) : (
           <p className="text-sm text-gray-500 italic text-center py-6">
-            No deliveries yet. Try sending a test webhook.
+            No deliveries yet. Send a test webhook to get started.
           </p>
         )}
       </div>
 
-      {/* Warning Banner */}
+      {/* ── Warning Banner ── */}
       <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
-        <AlertTriangle className="text-amber-600 mt-0.5" size={20} />
+        <AlertTriangle className="text-amber-600 mt-0.5 shrink-0" size={20} />
         <div>
           <p className="font-medium text-amber-800">Important</p>
           <p className="text-sm text-amber-700 mt-1">
             Your webhook must use <strong>https://</strong> and respond quickly
-            with 2xx status. Process events asynchronously.
+            with a 2xx status. Process events asynchronously to avoid timeouts.
           </p>
         </div>
       </div>
 
-      {/* Footer */}
+      {/* ── Footer ── */}
       <div className="mt-10 text-sm text-gray-500">
-        <p>
-          Need help? See our{" "}
-          <a href="/docs/webhooks" className="text-primary hover:underline">
-            webhook{" "}
-            <span className="text-accent font-semibold">documentation</span>
-          </a>
-          .
-        </p>
+        Need help?{" "}
+        <a href="/docs/webhooks" className="text-primary hover:underline">
+          Read the webhook docs →
+        </a>
       </div>
     </section>
   );

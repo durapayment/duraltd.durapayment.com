@@ -12,7 +12,7 @@ import {
   RiTimeLine,
   RiRefreshLine,
 } from "react-icons/ri";
-import { Avatar, Button, Table } from "@heroui/react";
+import { Avatar, Button, ProgressCircle, Table } from "@heroui/react";
 import { useState, useEffect, useCallback, useRef } from "react";
 
 interface Customer {
@@ -276,6 +276,21 @@ export default function CustomersPage() {
   };
 
   const totalPages = meta?.last_page ?? 1;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center">
+        <div className="text-center mt-10 flex flex-col items-center">
+          <ProgressCircle isIndeterminate aria-label="Loading...">
+            <ProgressCircle.Track>
+              <ProgressCircle.TrackCircle />
+              <ProgressCircle.FillCircle />
+            </ProgressCircle.Track>
+          </ProgressCircle>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex h-full flex-col items-center">
