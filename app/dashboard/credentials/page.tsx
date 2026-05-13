@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { Tabs, ProgressCircle } from "@heroui/react";
+import Link from "next/link";
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -976,9 +977,14 @@ export default function ApiKeys() {
       {/* Footer */}
       <div className="mt-10 text-[14px] text-gray-400">
         Need help?{" "}
-        <a href="/docs" className="text-blue-500 hover:underline">
+        <Link
+          target="_blank"
+          rel="noopener noreferrer"
+          href="https://durapayment-api.docs.buildwithfern.com/durapayment-api/introduction"
+          className="text-accent hover:underline"
+        >
           Read the integration docs →
-        </a>
+        </Link>
       </div>
 
       {/* Confirm Modal */}

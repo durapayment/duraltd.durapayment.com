@@ -18,6 +18,7 @@ import {
 import { ProgressCircle, Toast, toast } from "@heroui/react";
 import clsx from "clsx";
 import { Button, Spinner } from "@heroui/react";
+import Link from "next/link";
 
 // ────────────────────────────────────────────────
 // Types
@@ -487,11 +488,16 @@ export default function WebhooksAndCallbacks() {
       </div>
 
       {/* ── Footer ── */}
-      <div className="mt-10 text-sm text-gray-500">
+      <div className="mt-10 text-[14px] text-gray-400">
         Need help?{" "}
-        <a href="/docs/webhooks" className="text-primary hover:underline">
-          Read the webhook docs →
-        </a>
+        <Link
+          target="_blank"
+          rel="noopener noreferrer"
+          href="https://durapayment-api.docs.buildwithfern.com/durapayment-api/introduction"
+          className="text-accent hover:underline"
+        >
+          Read the integration docs →
+        </Link>
       </div>
     </section>
   );
