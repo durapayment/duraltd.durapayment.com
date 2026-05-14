@@ -434,7 +434,7 @@ export default function Settings() {
             <p className="font-medium text-sm leading-snug wrap-break-word">
               {label}
             </p>
-            <div className="text-[12px] opacity-80 mt-0.5 min-w-0 overflow-hidden">
+            {/* <div className="text-[12px] opacity-80 mt-0.5 min-w-0 overflow-hidden">
               {selected ? (
                 <span className="text-blue-600 block truncate">
                   {selected.name}
@@ -447,7 +447,7 @@ export default function Settings() {
               ) : (
                 <span className="text-gray-400">No file uploaded</span>
               )}
-            </div>
+            </div> */}
           </div>
         </div>
 
