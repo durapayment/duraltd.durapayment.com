@@ -74,7 +74,7 @@ const DOC_FIELDS: {
 }[] = [
   {
     key: "nin",
-    label: "Identity Number (NIN)",
+    label: "National Identity Number (NIN)",
     serverKey: "nin_image_path",
   },
   {
@@ -84,12 +84,12 @@ const DOC_FIELDS: {
   },
   {
     key: "status_report",
-    label: "Status Report",
+    label: "Company Status Report",
     serverKey: "status_report_path",
   },
   {
     key: "memorandum",
-    label: "Memorandum",
+    label: "Memorandum & Articles of Association",
     serverKey: "memorandum_path",
   },
   {
@@ -430,19 +430,26 @@ export default function Settings() {
             className="opacity-75 shrink-0 mt-0.5 min-[480px]:mt-0"
             size={18}
           />
-          <div className="">
-            <p className="font-medium text-sm leading-snug wrap-break-word">
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <p className="font-medium text-sm leading-snug break-words">
               {label}
             </p>
+
             <div className="text-[12px] opacity-80 mt-0.5">
               {selected ? (
                 <span className="text-blue-600 block truncate wrap-break-word">
-                  {selected.name}
+                  {selected.name.length > 25
+                    ? selected.name.substring(0, 25)
+                    : selected.name}
                 </span>
               ) : existingName ? (
                 <span className="text-green-600 flex items-center gap-1 min-w-0 wrap-break-word">
                   <CheckCircle size={10} className="shrink-0" />
-                  <span className="truncate min-w-0">{existingName}</span>
+                  <span className="truncate min-w-0">
+                    {existingName.length > 25
+                      ? existingName.substring(0, 25)
+                      : existingName}
+                  </span>
                 </span>
               ) : (
                 <span className="text-gray-400">No file uploaded</span>
@@ -509,7 +516,7 @@ export default function Settings() {
 
   // ── JSX ───────────────────────────────────────
   return (
-    <section className="max-w-5xl mx-auto px-3 sm:px-4 py-5 sm:py-8">
+    <section className="max-w-5xl mx-auto py-5 sm:py-8">
       <div className="mb-5 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
           Account Settings
@@ -582,9 +589,9 @@ export default function Settings() {
                   : "border-transparent opacity-80 hover:text-gray-700",
               )}
             >
-              <tab.icon size={14} className="shrink-0" />
+              <tab.icon size={16} className="shrink-0" />
               {/* FIX: always show label; use `truncate` instead of hiding on small screens */}
-              <span className="truncate">{tab.label}</span>
+              <span className="truncate hidden sm:inline">{tab.label}</span>
               {tab.id === "compliance" &&
                 settings.verification_status !== "verified" && (
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block shrink-0" />
@@ -835,7 +842,7 @@ export default function Settings() {
             </div>
 
             {/* Documents */}
-            <div className="">
+            <div className="w-full min-w-0">
               <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-[15px]">
                 Required Documents
               </h3>
@@ -843,7 +850,7 @@ export default function Settings() {
                 Accepted formats: PDF, JPEG, PNG, GIF, WEBP · Max size: 5MB per
                 file
               </p>
-              <div className="space-y-2.5 sm:space-y-3 ">
+              <div className="space-y-2.5 sm:space-y-3 w-full">
                 {DOC_FIELDS.map(({ key, label, serverKey }) => (
                   <DocRow
                     key={key}
