@@ -852,6 +852,13 @@ export default function Settings() {
                     serverKey={serverKey}
                   />
                 ))} */}
+
+                <p>
+                  Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                  Deserunt voluptate consequatur incidunt maxime earum, ipsa,
+                  quos amet in numquam temporibus totam, officiis omnis
+                  voluptatibus eos? Unde sunt impedit debitis earum?
+                </p>
               </div>
             </div>
 
