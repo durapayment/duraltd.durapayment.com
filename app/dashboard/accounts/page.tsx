@@ -17,6 +17,7 @@ import {
 } from "react-icons/ri";
 import { Avatar, Button, ProgressCircle, Table } from "@heroui/react";
 import { authService, User } from "@/app/lib/auth";
+import { BusinessVerificationStatus } from "@/app/components/business_verification_status";
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -456,6 +457,9 @@ export default function AccountsPage() {
   return (
     <div className="w-full flex h-full flex-col items-center">
       <div className="max-w-310 flex flex-col gap-6 flex-1 w-full">
+        {business?.verification_status !== "verified" && (
+          <BusinessVerificationStatus status={business?.verification_status} />
+        )}
         {/* Header */}
         <div className="flex gap-3 md:gap-0 flex-col md:flex-row items-start md:items-center justify-between mt-4">
           <div>
