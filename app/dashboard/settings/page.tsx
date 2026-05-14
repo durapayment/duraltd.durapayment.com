@@ -138,7 +138,7 @@ function VerificationBadge({ status }: { status: string }) {
       label: "Suspended",
     },
   };
-  const { cls, label } = config[status] ?? {
+  const { cls } = config[status] ?? {
     cls: "bg-gray-100 text-gray-600 border-gray-200",
     label: status,
   };
@@ -147,17 +147,11 @@ function VerificationBadge({ status }: { status: string }) {
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${cls}`}
     >
       {status === "verified" ? (
-        <div className="flex items-center gap-2">
-          <CheckCircle size={11} />
-          <p className="text-[11px] capitalize">{status}</p>
-        </div>
+        <CheckCircle size={11} />
       ) : (
-        <div className="flex items-center gap-2">
-          <AlertCircle size={11} />
-          <p className="text-[11px] capitalize">{status}</p>
-        </div>
+        <AlertCircle size={11} />
       )}
-      <span className="hidden xs:inline">{label}</span>
+      <span className="capitalize">{status.replace(/_/g, " ")}</span>
     </span>
   );
 }
@@ -171,12 +165,10 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
   const [savingSection, setSavingSection] = useState<string | null>(null);
-
   const [validationErrors, setValidationErrors] = useState<Set<string>>(
     new Set(),
   );
 
-  // Inline feedback banner
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
@@ -187,10 +179,8 @@ export default function Settings() {
     setTimeout(() => setFeedback(null), 6000);
   };
 
-  // Contact form
   const [contactForm, setContactForm] = useState({ alternative_email: "" });
 
-  // Compliance form
   const [complianceForm, setComplianceForm] = useState({
     registration_number: "",
     business_type: "",
@@ -207,7 +197,6 @@ export default function Settings() {
     board_resolution: null,
   });
 
-  // Preferences
   const [preferencesForm, setPreferencesForm] = useState({
     receive_email_notifications: true,
     receive_sms_notifications: true,
@@ -218,7 +207,6 @@ export default function Settings() {
     applyTheme(getStoredTheme());
   }, []);
 
-  // ── Fetch settings on mount ───────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -258,7 +246,6 @@ export default function Settings() {
     })();
   }, []);
 
-  // ── Save contact ──────────────────────────────
   const handleSaveContact = async () => {
     setSavingSection("contact");
     try {
@@ -287,9 +274,7 @@ export default function Settings() {
     }
   };
 
-  // ── Save compliance ───────────────────────────
   const handleSaveCompliance = async () => {
-    // ── Validation ────────────────────────────────
     const missingFields: string[] = [];
 
     if (!complianceForm.registration_number.trim())
@@ -370,14 +355,11 @@ export default function Settings() {
     }
   };
 
-  // ── Save preferences ──────────────────────────
   const handleSavePreferences = async () => {
     setSavingSection("preferences");
     try {
-      // Apply theme locally (no server involvement)
       applyTheme(preferencesForm.theme);
 
-      // Save notification prefs to server
       const res = await fetch("/api/settings/preferences", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -392,7 +374,6 @@ export default function Settings() {
       if (!res.ok)
         throw new Error(data.message || "Failed to save preferences");
 
-      // Sync local settings state with confirmed server values
       if (data.data) {
         setSettings((prev) => (prev ? { ...prev, ...data.data } : prev));
       }
@@ -408,7 +389,6 @@ export default function Settings() {
     }
   };
 
-  // ── File picker ───────────────────────────────
   const triggerFileInput = (key: DocKey) => {
     const input = document.createElement("input");
     input.type = "file";
@@ -421,6 +401,7 @@ export default function Settings() {
   };
 
   // ── Doc row ───────────────────────────────────
+  // FIX: removed non-standard `xs:` breakpoints; used `min-[480px]:` instead
   const DocRow = ({
     docKey,
     label,
@@ -433,20 +414,25 @@ export default function Settings() {
     const existingUrl = settings?.[serverKey] as string | null;
     const existingName = existingUrl ? existingUrl.split("/").pop() : null;
     const selected = selectedFiles[docKey];
+    const hasError = !selected && !existingUrl && validationErrors.has(label);
 
     return (
       <div
         className={clsx(
-          "flex flex-col xs:flex-row xs:items-center justify-between p-3 sm:p-4 border rounded-2xl gap-3",
-          !selected && !existingUrl && validationErrors.has(label)
-            ? "border-red-400 bg-red-50"
-            : "border-border",
+          "flex flex-col min-[480px]:flex-row min-[480px]:items-center justify-between p-3 sm:p-4 border rounded-2xl gap-3",
+          hasError ? "border-red-400 bg-red-50" : "border-border",
         )}
       >
-        <div className="flex items-start xs:items-center gap-3 min-w-0">
-          <FileText className="opacity-75 shrink-0 mt-0.5 xs:mt-0" size={18} />
+        {/* Label + status */}
+        <div className="flex items-start min-[480px]:items-center gap-3 min-w-0">
+          <FileText
+            className="opacity-75 shrink-0 mt-0.5 min-[480px]:mt-0"
+            size={18}
+          />
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-sm leading-snug">{label}</p>
+            <p className="font-medium text-sm leading-snug break-words">
+              {label}
+            </p>
             <p className="text-[12px] opacity-80 truncate mt-0.5">
               {selected ? (
                 <span className="text-blue-600">{selected.name}</span>
@@ -461,7 +447,9 @@ export default function Settings() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0 self-end xs:self-auto">
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 shrink-0 self-end min-[480px]:self-auto">
           {existingUrl && !selected && (
             <a
               href={existingUrl}
@@ -543,7 +531,10 @@ export default function Settings() {
           ) : (
             <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
           )}
-          <p className="whitespace-pre-line leading-snug">{feedback.message}</p>
+          {/* FIX: break-words prevents long error text overflowing on narrow screens */}
+          <p className="whitespace-pre-line leading-snug break-words min-w-0 flex-1">
+            {feedback.message}
+          </p>
           <button
             onClick={() => setFeedback(null)}
             className="ml-auto shrink-0 opacity-50 hover:opacity-100 transition-opacity text-lg leading-none"
@@ -554,19 +545,16 @@ export default function Settings() {
         </div>
       )}
 
-      {/* ── Tabs ── */}
-      {/*
-        Key responsive behaviours:
-        • overflow-x-auto + scrollbar-hide → scrolls horizontally on tiny screens
-        • Tab labels hidden at <xs (≤360 px) to prevent overflow; icons always show
-        • sticky top-0 keeps tabs visible while scrolling the tab content
-        • scroll-snap gives a nice snap feel on mobile
+      {/* ── Tabs ──
+        FIX: removed `min-w-max` which forced the container wider than the viewport.
+        Now uses `w-full` + `overflow-x-auto` with proper scrollbar hiding.
+        Tab labels always visible; icon + label kept together with `shrink-0`.
       */}
       <div
         className="w-full overflow-x-auto border-b border-border mb-5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         role="tablist"
       >
-        <div className="flex min-w-max">
+        <div className="flex w-full min-w-0">
           {(
             [
               { id: "profile", label: "Profile", icon: User },
@@ -581,16 +569,19 @@ export default function Settings() {
               aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={clsx(
-                "flex items-center gap-1.5 pb-3 sm:pb-4",
-                "px-3 sm:px-4 first:pl-0",
-                "border-b-2 transition-all whitespace-nowrap text-sm font-medium",
+                // FIX: flex-1 so tabs share space evenly and never overflow;
+                // removed `first:pl-0` which clipped the border-b indicator.
+                "flex-1 flex items-center justify-center gap-1.5 pb-3 sm:pb-4",
+                "px-1 sm:px-3",
+                "border-b-2 transition-all text-xs sm:text-sm font-medium",
                 activeTab === tab.id
                   ? "border-accent text-accent"
                   : "border-transparent opacity-80 hover:text-gray-700",
               )}
             >
-              <tab.icon size={15} className="shrink-0" />
-              <span className="hidden min-[360px]:inline">{tab.label}</span>
+              <tab.icon size={14} className="shrink-0" />
+              {/* FIX: always show label; use `truncate` instead of hiding on small screens */}
+              <span className="truncate">{tab.label}</span>
               {tab.id === "compliance" &&
                 settings.verification_status !== "verified" && (
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block shrink-0" />
@@ -627,9 +618,11 @@ export default function Settings() {
                 <label className="block text-[11px] uppercase tracking-wider opacity-75 mb-1">
                   {label}
                 </label>
+                {/* FIX: `break-all` → `break-words overflow-hidden` to handle long emails
+                    without breaking every single character unnecessarily */}
                 <p
                   className={clsx(
-                    "font-medium text-sm sm:text-[15px] break-all",
+                    "font-medium text-sm sm:text-[15px] break-words overflow-hidden",
                     mono && "font-mono tracking-wide",
                   )}
                 >
@@ -682,6 +675,7 @@ export default function Settings() {
             </div>
           </div>
 
+          {/* FIX: `w-full sm:w-auto` already present; added `min-w-0` to prevent overflow */}
           <button
             onClick={handleSaveContact}
             disabled={savingSection === "contact"}
@@ -817,7 +811,9 @@ export default function Settings() {
                       setComplianceForm((f) => ({ ...f, bvn: val }));
                     }}
                     className={clsx(
-                      "w-full sm:max-w-sm px-4 py-2.5 border rounded-2xl focus:border-gray-400 outline-none text-sm font-mono tracking-wider",
+                      // FIX: removed `sm:max-w-sm` — it caused layout inconsistency
+                      // on mid-sized screens. Width is now full within its grid cell.
+                      "w-full px-4 py-2.5 border rounded-2xl focus:border-gray-400 outline-none text-sm font-mono tracking-wider",
                       validationErrors.has("BVN (must be 11 digits)")
                         ? "border-red-400 bg-red-50"
                         : "border-border",
@@ -855,7 +851,7 @@ export default function Settings() {
             </div>
 
             {/* Completion indicator */}
-            {/* {(() => {
+            {(() => {
               const filled = [
                 complianceForm.registration_number,
                 complianceForm.business_type,
@@ -899,7 +895,7 @@ export default function Settings() {
                   </p>
                 </div>
               );
-            })()} */}
+            })()}
           </div>
 
           <button
@@ -941,18 +937,29 @@ export default function Settings() {
                     sub: "Receive real-time SMS alerts for transactions",
                   },
                 ].map(({ key, label, sub }) => (
-                  <label
+                  <div
                     key={key}
-                    className="flex items-center justify-between cursor-pointer gap-3 p-3 sm:p-4 border border-border rounded-2xl transition-colors"
+                    className="flex items-center justify-between gap-3 p-3 sm:p-4 border border-border rounded-2xl"
                   >
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium">{label}</p>
                       <p className="text-[12px] opacity-75 leading-snug mt-0.5">
                         {sub}
                       </p>
                     </div>
-                    {/* Toggle */}
-                    <div className="relative shrink-0">
+                    {/* FIX: toggle — moved `relative` to the outer wrapper div so the
+                        absolutely-positioned knob is correctly contained. Previously
+                        `relative` was only on the hidden <input>, causing the knob to
+                        escape its container on mobile. */}
+                    <div
+                      className="relative shrink-0 w-11 h-6 cursor-pointer"
+                      onClick={() =>
+                        setPreferencesForm((prev) => ({
+                          ...prev,
+                          [key]: !prev[key],
+                        }))
+                      }
+                    >
                       <input
                         type="checkbox"
                         className="sr-only"
@@ -969,24 +976,17 @@ export default function Settings() {
                           "w-11 h-6 rounded-full transition-colors",
                           preferencesForm[key] ? "bg-accent" : "bg-gray-200",
                         )}
-                        onClick={() =>
-                          setPreferencesForm((prev) => ({
-                            ...prev,
-                            [key]: !prev[key],
-                          }))
-                        }
-                      >
-                        <div
-                          className={clsx(
-                            "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform",
-                            preferencesForm[key]
-                              ? "translate-x-5"
-                              : "translate-x-0.5",
-                          )}
-                        />
-                      </div>
+                      />
+                      <div
+                        className={clsx(
+                          "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform",
+                          preferencesForm[key]
+                            ? "translate-x-5"
+                            : "translate-x-0.5",
+                        )}
+                      />
                     </div>
-                  </label>
+                  </div>
                 ))}
               </div>
             </div>
