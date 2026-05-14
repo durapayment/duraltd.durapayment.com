@@ -147,9 +147,15 @@ function VerificationBadge({ status }: { status: string }) {
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${cls}`}
     >
       {status === "verified" ? (
-        <CheckCircle size={11} />
+        <div className="flex items-center gap-2">
+          <CheckCircle size={11} />
+          <p className="capitalize text-[12px]">{status}</p>
+        </div>
       ) : (
-        <AlertCircle size={11} />
+        <div className="flex items-center gap-2">
+          <AlertCircle size={11} />
+          <p className="capitalize text-[12px]">{status}</p>
+        </div>
       )}
       <span className="hidden xs:inline">{label}</span>
     </span>
