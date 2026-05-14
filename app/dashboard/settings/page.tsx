@@ -4,83 +4,186 @@ import { useState, useEffect } from "react";
 import {
   User,
   Mail,
-  Phone,
   Shield,
   Bell,
   Palette,
   Upload,
   FileText,
-  CheckCircle,
   AlertCircle,
   Loader2,
+  CheckCircle,
+  ExternalLink,
 } from "lucide-react";
 import clsx from "clsx";
-import { toast } from "react-hot-toast"; // Assuming you have react-hot-toast installed
+import { toast } from "react-hot-toast";
 
-interface UserData {
-  id: string;
-  fullName: string;
-  businessId: string;
-  companyName: string;
-  email: string;
-  phone: string;
-}
-
+// ─────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────
 interface SettingsData {
-  contact: {
-    alternative_email: string;
-  };
-  compliance: {
-    registration_number: string;
-    business_type: string;
-    documents: {
-      nin?: { name: string; url?: string };
-      cac_certificate?: { name: string; url?: string };
-      status_report?: { name: string; url?: string };
-      memorandum?: { name: string; url?: string };
-      board_resolution?: { name: string; url?: string };
-    };
-  };
-  preferences: {
-    receive_email_notifications: boolean;
-    receive_sms_notifications: boolean;
-    theme: "light" | "dark" | "system";
-  };
+  business_id: string;
+  verification_status: string;
+  fullname: string;
+  company_name: string;
+  email: string;
+  phone_number: string;
+  alternative_email: string | null;
+  registration_number: string | null;
+  business_type: string | null;
+  business_industry: string | null;
+  bvn: string | null;
+  nin_image_path: string | null;
+  cac_certificate_path: string | null;
+  status_report_path: string | null;
+  memorandum_path: string | null;
+  board_resolution_path: string | null;
+  receive_email_notifications: boolean;
+  receive_sms_notifications: boolean;
 }
 
-const BUSINESS_TYPES = [
-  "Sole Proprietorship",
-  "Private Limited Company",
-  "Public Limited Company",
-  "Partnership",
-  "NGO",
+type DocKey =
+  | "nin"
+  | "cac_certificate"
+  | "status_report"
+  | "memorandum"
+  | "board_resolution";
+type Tab = "profile" | "contact" | "compliance" | "preferences";
+type Theme = "light" | "dark" | "system";
+
+const BUSINESS_TYPES = ["individual", "corporate"];
+
+const BUSINESS_INDUSTRIES = [
+  "Fintech",
+  "E-commerce",
+  "Logistics",
+  "Healthcare",
+  "Education",
+  "Agriculture",
+  "Real Estate",
+  "Media & Entertainment",
+  "Travel & Hospitality",
+  "Manufacturing",
   "Other",
 ];
 
+const THEME_KEY = "dura_theme_preference";
+
+const DOC_FIELDS: {
+  key: DocKey;
+  label: string;
+  serverKey: keyof SettingsData;
+}[] = [
+  {
+    key: "nin",
+    label: "National Identity Number (NIN)",
+    serverKey: "nin_image_path",
+  },
+  {
+    key: "cac_certificate",
+    label: "CAC Certificate",
+    serverKey: "cac_certificate_path",
+  },
+  {
+    key: "status_report",
+    label: "Company Status Report",
+    serverKey: "status_report_path",
+  },
+  {
+    key: "memorandum",
+    label: "Memorandum & Articles of Association",
+    serverKey: "memorandum_path",
+  },
+  {
+    key: "board_resolution",
+    label: "Board Resolution",
+    serverKey: "board_resolution_path",
+  },
+];
+
+function applyTheme(theme: Theme) {
+  const root = document.documentElement;
+  root.classList.remove("light", "dark");
+  if (theme !== "system") root.classList.add(theme);
+  localStorage.setItem(THEME_KEY, theme);
+}
+
+function getStoredTheme(): Theme {
+  if (typeof window === "undefined") return "system";
+  return (localStorage.getItem(THEME_KEY) as Theme) ?? "system";
+}
+
+function VerificationBadge({ status }: { status: string }) {
+  const config: Record<string, { cls: string; label: string }> = {
+    verified: {
+      cls: "bg-green-50 text-green-700 border-green-200",
+      label: "Verified",
+    },
+    under_review: {
+      cls: "bg-blue-50 text-blue-700 border-blue-200",
+      label: "Under Review",
+    },
+    incomplete: {
+      cls: "bg-amber-50 text-amber-700 border-amber-200",
+      label: "Incomplete",
+    },
+    pending: {
+      cls: "bg-amber-50 text-amber-700 border-amber-200",
+      label: "Pending",
+    },
+    rejected: {
+      cls: "bg-red-50 text-red-700 border-red-200",
+      label: "Rejected",
+    },
+    suspended: {
+      cls: "bg-red-50 text-red-700 border-red-200",
+      label: "Suspended",
+    },
+  };
+  const { cls, label } = config[status] ?? {
+    cls: "bg-gray-100 text-gray-600 border-gray-200",
+    label: status,
+  };
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${cls}`}
+    >
+      {status === "verified" ? (
+        <CheckCircle size={11} />
+      ) : (
+        <AlertCircle size={11} />
+      )}
+      <span className="hidden xs:inline">{label}</span>
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Main Page
+// ─────────────────────────────────────────────────────────
 export default function Settings() {
-  const [user, setUser] = useState<UserData | null>(null);
   const [settings, setSettings] = useState<SettingsData | null>(null);
-  const [activeTab, setActiveTab] = useState<
-    "profile" | "contact" | "compliance" | "preferences"
-  >("profile");
+  const [activeTab, setActiveTab] = useState<Tab>("profile");
   const [loading, setLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
   const [savingSection, setSavingSection] = useState<string | null>(null);
 
-  // Form states
+  const [validationErrors, setValidationErrors] = useState<Set<string>>(
+    new Set(),
+  );
+
+  // Contact form
   const [contactForm, setContactForm] = useState({ alternative_email: "" });
+
+  // Compliance form
   const [complianceForm, setComplianceForm] = useState({
     registration_number: "",
     business_type: "",
+    business_industry: "",
+    bvn: "",
   });
-
-  // File states
-  const [selectedFiles, setSelectedFiles] = useState<{
-    nin: File | null;
-    cac_certificate: File | null;
-    status_report: File | null;
-    memorandum: File | null;
-    board_resolution: File | null;
-  }>({
+  const [selectedFiles, setSelectedFiles] = useState<
+    Record<DocKey, File | null>
+  >({
     nin: null,
     cac_certificate: null,
     status_report: null,
@@ -92,107 +195,148 @@ export default function Settings() {
   const [preferencesForm, setPreferencesForm] = useState({
     receive_email_notifications: true,
     receive_sms_notifications: true,
-    theme: "system" as "light" | "dark" | "system",
+    theme: "system" as Theme,
   });
 
-  // Mock auth check + data fetch
   useEffect(() => {
-    const initialize = async () => {
-      // Mock auth
-      const mockUser: UserData = {
-        id: "user_123",
-        fullName: "John Doe",
-        businessId: "BIZ-987654",
-        companyName: "Acme Innovations Ltd",
-        email: "john@acme.com",
-        phone: "+234 803 123 4567",
-      };
-      setUser(mockUser);
-
-      // Mock settings fetch
-      const mockSettings: SettingsData = {
-        contact: { alternative_email: "john.alt@acme.com" },
-        compliance: {
-          registration_number: "RC-1234567",
-          business_type: "Private Limited Company",
-          documents: {
-            nin: { name: "john_nin.pdf" },
-            cac_certificate: { name: "cac_cert_2025.pdf" },
-          },
-        },
-        preferences: {
-          receive_email_notifications: true,
-          receive_sms_notifications: false,
-          theme: "system",
-        },
-      };
-
-      setSettings(mockSettings);
-      setContactForm({
-        alternative_email: mockSettings.contact.alternative_email,
-      });
-      setComplianceForm({
-        registration_number: mockSettings.compliance.registration_number,
-        business_type: mockSettings.compliance.business_type,
-      });
-      setPreferencesForm(mockSettings.preferences);
-
-      // Handle URL param for verification complete
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("completeVerification") === "true") {
-        setActiveTab("compliance");
-      }
-
-      setLoading(false);
-    };
-
-    initialize();
+    applyTheme(getStoredTheme());
   }, []);
 
-  // Theme handler (mock - integrate next-themes in real app)
-  const applyTheme = (theme: "light" | "dark" | "system") => {
-    if (theme === "system") {
-      document.documentElement.classList.remove("light", "dark");
-    } else {
-      document.documentElement.classList.remove("light", "dark");
-      document.documentElement.classList.add(theme);
-    }
-  };
+  // ── Fetch settings on mount ───────────────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/settings");
+        if (res.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+        if (!res.ok) throw new Error("Failed to load settings");
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const json: any = await res.json();
+        const data: SettingsData = json.data;
+
+        setSettings(data);
+        setContactForm({ alternative_email: data.alternative_email ?? "" });
+        setComplianceForm({
+          registration_number: data.registration_number ?? "",
+          business_type: data.business_type ?? "",
+          business_industry: data.business_industry ?? "",
+          bvn: data.bvn ?? "",
+        });
+        setPreferencesForm({
+          receive_email_notifications: data.receive_email_notifications,
+          receive_sms_notifications: data.receive_sms_notifications,
+          theme: getStoredTheme(),
+        });
+
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("completeVerification") === "true")
+          setActiveTab("compliance");
+      } catch (err: unknown) {
+        setPageError(err instanceof Error ? err.message : "Failed to load");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  // ── Save contact ──────────────────────────────
   const handleSaveContact = async () => {
     setSavingSection("contact");
     try {
-      // Simulate API call: POST /api/settings/contact
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      toast.success("Contact information updated successfully");
-    } catch (err) {
-      toast.error("Failed to update contact information");
+      const res = await fetch("/api/settings/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          alternative_email: contactForm.alternative_email,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to save");
+      toast.success("Contact information updated");
+      setSettings((prev) =>
+        prev
+          ? { ...prev, alternative_email: contactForm.alternative_email }
+          : prev,
+      );
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setSavingSection(null);
     }
   };
 
+  // ── Save compliance ───────────────────────────
   const handleSaveCompliance = async () => {
+    // ── Validation ────────────────────────────────
+    const missingFields: string[] = [];
+
+    if (!complianceForm.registration_number.trim())
+      missingFields.push("Registration Number");
+    if (!complianceForm.business_type) missingFields.push("Business Type");
+    if (!complianceForm.business_industry) missingFields.push("Industry");
+    if (!complianceForm.bvn || complianceForm.bvn.length < 11)
+      missingFields.push("BVN (must be 11 digits)");
+
+    for (const { key, label, serverKey } of DOC_FIELDS) {
+      const alreadyUploaded = !!(
+        settings as unknown as Record<string, unknown>
+      )?.[serverKey];
+      const newlySelected = !!selectedFiles[key];
+      if (!alreadyUploaded && !newlySelected) {
+        missingFields.push(label);
+      }
+    }
+
+    if (missingFields.length > 0) {
+      setValidationErrors(new Set(missingFields));
+      toast.error(
+        `Please complete the following:\n• ${missingFields.join("\n• ")}`,
+        {
+          duration: 6000,
+          style: { whiteSpace: "pre-line", maxWidth: 360 },
+        },
+      );
+      return;
+    }
+
+    setValidationErrors(new Set());
     setSavingSection("compliance");
     try {
       const formData = new FormData();
-      formData.append(
-        "registration_number",
-        complianceForm.registration_number,
-      );
-      formData.append("business_type", complianceForm.business_type);
+      if (complianceForm.registration_number)
+        formData.append(
+          "registration_number",
+          complianceForm.registration_number,
+        );
+      if (complianceForm.business_type)
+        formData.append("business_type", complianceForm.business_type);
+      if (complianceForm.business_industry)
+        formData.append("business_industry", complianceForm.business_industry);
+      if (complianceForm.bvn) formData.append("bvn", complianceForm.bvn);
 
-      // Append only selected files
-      Object.entries(selectedFiles).forEach(([key, file]) => {
-        if (file) formData.append(key, file);
+      (Object.entries(selectedFiles) as [DocKey, File | null][]).forEach(
+        ([key, file]) => {
+          if (file) formData.append(key, file);
+        },
+      );
+
+      const res = await fetch("/api/settings/compliance", {
+        method: "POST",
+        body: formData,
       });
 
-      // Simulate API call: POST /api/settings/compliance
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to save compliance");
 
-      toast.success("Compliance documents submitted successfully");
+      toast.success("Compliance documents submitted");
 
-      // Clear selected files after success
+      if (data.data) {
+        setSettings((prev) => (prev ? { ...prev, ...data.data } : prev));
+      }
+
       setSelectedFiles({
         nin: null,
         cac_certificate: null,
@@ -200,209 +344,280 @@ export default function Settings() {
         memorandum: null,
         board_resolution: null,
       });
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to save compliance information");
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to save compliance",
+      );
     } finally {
       setSavingSection(null);
     }
   };
 
+  // ── Save preferences ──────────────────────────
   const handleSavePreferences = async () => {
     setSavingSection("preferences");
     try {
-      // Simulate API call: PATCH /api/settings/preferences
-      await new Promise((resolve) => setTimeout(resolve, 600));
       applyTheme(preferencesForm.theme);
-      toast.success("Preferences saved successfully");
-    } catch (err) {
+      toast.success("Preferences saved");
+    } catch (err: unknown) {
       toast.error("Failed to save preferences");
     } finally {
       setSavingSection(null);
     }
   };
 
-  const triggerFileInput = (type: keyof typeof selectedFiles) => {
+  // ── File picker ───────────────────────────────
+  const triggerFileInput = (key: DocKey) => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*,.pdf";
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        setSelectedFiles((prev) => ({ ...prev, [type]: file }));
-      }
+      if (file) setSelectedFiles((prev) => ({ ...prev, [key]: file }));
     };
     input.click();
   };
 
-  const getDocumentDisplay = (
-    type: keyof SettingsData["compliance"]["documents"],
-    label: string,
-  ) => {
-    const existing = settings?.compliance.documents[type];
-    const selected = selectedFiles[type];
+  // ── Doc row ───────────────────────────────────
+  const DocRow = ({
+    docKey,
+    label,
+    serverKey,
+  }: {
+    docKey: DocKey;
+    label: string;
+    serverKey: keyof SettingsData;
+  }) => {
+    const existingUrl = settings?.[serverKey] as string | null;
+    const existingName = existingUrl ? existingUrl.split("/").pop() : null;
+    const selected = selectedFiles[docKey];
 
     return (
-      <div className="flex items-center justify-between p-4 border border-gray-200 rounded-2xl bg-white">
-        <div className="flex items-center gap-3">
-          <FileText className="text-acborder-accent" size={20} />
-          <div>
-            <p className="font-medium text-sm">{label}</p>
-            <p className="text-[12px] text-gray-500">
-              {selected
-                ? selected.name
-                : existing
-                  ? existing.name
-                  : "No file uploaded"}
+      <div
+        className={clsx(
+          "flex flex-col xs:flex-row xs:items-center justify-between p-3 sm:p-4 border rounded-2xl gap-3",
+          !selected && !existingUrl && validationErrors.has(label)
+            ? "border-red-400 bg-red-50"
+            : "border-border",
+        )}
+      >
+        <div className="flex items-start xs:items-center gap-3 min-w-0">
+          <FileText className="opacity-75 shrink-0 mt-0.5 xs:mt-0" size={18} />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-sm leading-snug">{label}</p>
+            <p className="text-[12px] opacity-80 truncate mt-0.5">
+              {selected ? (
+                <span className="text-blue-600">{selected.name}</span>
+              ) : existingName ? (
+                <span className="text-green-600 flex items-center gap-1">
+                  <CheckCircle size={10} className="shrink-0" />
+                  <span className="truncate">{existingName}</span>
+                </span>
+              ) : (
+                "No file uploaded"
+              )}
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => triggerFileInput(type)}
-          className="px-4 py-2 text-sm font-medium text-acborder-accent hover:bg-violet-50 rounded-xl transition-colors flex items-center gap-2"
-        >
-          <Upload size={16} />
-          {existing || selected ? "Update" : "Upload"}
-        </button>
+        <div className="flex items-center gap-2 shrink-0 self-end xs:self-auto">
+          {existingUrl && !selected && (
+            <a
+              href={existingUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="p-1.5 rounded-lg hover:bg-gray-100 opacity-80 transition-colors"
+              title="View"
+            >
+              <ExternalLink size={14} />
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={() => triggerFileInput(docKey)}
+            className="px-3 py-1.5 text-sm font-medium opacity-80 hover:bg-gray-100 border border-gray-200 rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap"
+          >
+            <Upload size={13} />
+            {existingName || selected ? "Replace" : "Upload"}
+          </button>
+        </div>
       </div>
     );
   };
 
+  // ── Render guards ─────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-75 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="animate-spin text-acborder-accent" size={32} />
-          <p className="text-gray-500">Loading account settings...</p>
+          <Loader2 className="animate-spin opacity-75" size={32} />
+          <p className="opacity-80 text-sm">Loading settings...</p>
         </div>
       </div>
     );
   }
 
-  if (!user) {
+  if (pageError || !settings) {
     return (
-      <div className="p-8 text-center">Please log in to access settings.</div>
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="text-sm text-red-600 mb-3">
+            {pageError ?? "Failed to load settings"}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-xl border border-red-300 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
     );
   }
 
+  // ── JSX ───────────────────────────────────────
   return (
-    <section className="max-w-5xl mx-auto px-4 py-8">
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+    <section className="max-w-5xl mx-auto px-3 sm:px-4 py-5 sm:py-8">
+      <div className="mb-5 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
           Account Settings
         </h1>
-        <p className="text-gray-500 mt-1">
+        <p className="mt-1 opacity-80 text-xs sm:text-sm">
           Manage your profile, business verification, and preferences
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200 mb-8">
-        <div className="flex gap-8 text-sm font-medium">
-          {[
-            { id: "profile", label: "Profile", icon: User },
-            { id: "contact", label: "Contact", icon: Mail },
-            { id: "compliance", label: "Compliance", icon: Shield },
-            { id: "preferences", label: "Preferences", icon: Bell },
-          ].map((tab) => (
+      {/* ── Tabs ── */}
+      {/*
+        Key responsive behaviours:
+        • overflow-x-auto + scrollbar-hide → scrolls horizontally on tiny screens
+        • Tab labels hidden at <xs (≤360 px) to prevent overflow; icons always show
+        • sticky top-0 keeps tabs visible while scrolling the tab content
+        • scroll-snap gives a nice snap feel on mobile
+      */}
+      <div
+        className="w-full border-b border-border mb-6 overflow-x-auto scroll-smooth 
+             [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        role="tablist"
+      >
+        <div className="flex min-w-fit gap-1 px-1 sm:px-0">
+          {(
+            [
+              { id: "profile", label: "Profile", icon: User },
+              { id: "contact", label: "Contact", icon: Mail },
+              { id: "compliance", label: "Compliance", icon: Shield },
+              { id: "preferences", label: "Preferences", icon: Bell },
+            ] as { id: Tab; label: string; icon: React.ElementType }[]
+          ).map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
               className={clsx(
-                "flex items-center flex-wrap gap-2 pb-4 border-b-2 transition-all",
+                "group flex items-center gap-2 px-4 py-3 sm:py-4 rounded-t-lg",
+                "border-b-2 transition-all duration-200 whitespace-nowrap text-sm font-medium",
+                "min-h-13 active:scale-[0.985]", // better touch target
                 activeTab === tab.id
                   ? "border-accent text-accent"
-                  : "border-transparent text-gray-500 hover:text-gray-700",
+                  : "border-transparent hover:text-foreground/80 text-muted-foreground",
               )}
             >
-              {/* <tab.icon size={18} /> */}
-              {tab.label}
+              <tab.icon
+                size={18}
+                className="shrink-0 transition-transform group-hover:scale-110"
+              />
+
+              {/* Label - Responsive visibility */}
+              <span className="hidden sm:inline">{tab.label}</span>
+
+              {/* Compliance indicator */}
+              {tab.id === "compliance" &&
+                settings.verification_status !== "verified" && (
+                  <span className="w-2 h-2 rounded-full bg-amber-500 ring-2 ring-background shrink-0" />
+                )}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Profile Tab */}
+      {/* ── Profile Tab ── */}
       {activeTab === "profile" && (
-        <div className="bg-white rounded-3xl border border-gray-200 p-8">
-          <h2 className="text-[18px] font-semibold mb-6 flex items-center gap-3">
-            <User className="text-gray-400" /> Personal &amp; Business
-            Information
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <label className="block text-[12px] uppercase text-gray-500">
-                Full Name
-              </label>
-              <p className="font-medium text-[16px]">{user.fullName}</p>
-            </div>
-            <div>
-              <label className="block text-[12px] uppercase text-gray-500">
-                Business ID
-              </label>
-              <p className="font-mono text-[16px] tracking-wide">
-                {user.businessId}
-              </p>
-            </div>
-            <div>
-              <label className="block text-[12px] uppercase text-gray-500">
-                Company Name
-              </label>
-              <p className="font-medium text-[16px]">{user.companyName}</p>
-            </div>
-            <div>
-              <label className="block text-[12px] uppercase text-gray-500">
-                Primary Email
-              </label>
-              <p className="font-medium text-[16px]">{user.email}</p>
-            </div>
-            <div>
-              <label className="block text-[12px] uppercase text-gray-500">
-                Phone Number
-              </label>
-              <p className="font-medium text-[16px]">{user.phone}</p>
-            </div>
+        <div className="bg-background rounded-2xl sm:rounded-3xl border border-border p-4 sm:p-8">
+          <div className="flex flex-wrap items-start sm:items-center justify-between gap-3 mb-5 sm:mb-6">
+            <h2 className="text-base sm:text-[18px] font-semibold flex items-center gap-2 sm:gap-3">
+              <User className="opacity-75 shrink-0" size={18} />
+              Personal & Business Information
+            </h2>
+            <VerificationBadge status={settings.verification_status} />
           </div>
-          <p className="text-[12px] text-amber-600 mt-8 flex items-center gap-2">
-            <AlertCircle size={16} /> Some fields are immutable. Contact support
-            for changes.
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-8">
+            {[
+              { label: "Full Name", value: settings.fullname },
+              { label: "Business ID", value: settings.business_id, mono: true },
+              { label: "Company Name", value: settings.company_name },
+              { label: "Primary Email", value: settings.email },
+              { label: "Phone Number", value: settings.phone_number },
+              {
+                label: "Alternative Email",
+                value: settings.alternative_email ?? "—",
+              },
+            ].map(({ label, value, mono }) => (
+              <div key={label} className="min-w-0">
+                <label className="block text-[11px] uppercase tracking-wider opacity-75 mb-1">
+                  {label}
+                </label>
+                <p
+                  className={clsx(
+                    "font-medium text-sm sm:text-[15px] break-all",
+                    mono && "font-mono tracking-wide",
+                  )}
+                >
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-[11px] sm:text-[12px] text-amber-600 mt-6 sm:mt-8 flex items-start gap-2">
+            <AlertCircle size={14} className="shrink-0 mt-0.5" />
+            Some fields are immutable. Contact support to make changes.
           </p>
         </div>
       )}
 
-      {/* Contact Tab */}
+      {/* ── Contact Tab ── */}
       {activeTab === "contact" && (
-        <div className="bg-white rounded-3xl border border-gray-200 p-8 max-w-2xl">
-          <h2 className="text-xl font-semibold mb-6">Contact Information</h2>
+        <div className="bg-background rounded-2xl sm:rounded-3xl border border-border p-4 sm:p-8 max-w-2xl">
+          <h2 className="text-lg sm:text-xl font-semibold mb-5 sm:mb-6">
+            Contact Information
+          </h2>
 
-          <div className="space-y-8">
+          <div className="space-y-5 sm:space-y-6">
             <div>
-              <label className="block text-[12px] font-medium text-gray-700 mb-2">
+              <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
                 Alternative Email
               </label>
               <input
                 type="email"
                 value={contactForm.alternative_email}
                 onChange={(e) =>
-                  setContactForm({
-                    ...contactForm,
-                    alternative_email: e.target.value,
-                  })
+                  setContactForm({ alternative_email: e.target.value })
                 }
-                className="w-full px-5 py-3 border border-gray-200 rounded-2xl focus:border-violet-500 focus:ring-1 focus:ring-violet-200 outline-none"
+                className="w-full px-4 py-3 border border-border rounded-2xl focus:border-gray-400 outline-none text-sm transition-colors"
                 placeholder="alternate@email.com"
               />
             </div>
 
             <div>
-              <label className="block text-[12px] font-medium text-gray-700 mb-2">
+              <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
                 Phone Number (Primary)
               </label>
-              <div className="px-5 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-gray-500 font-medium">
-                {user.phone}
+              <div className="px-4 py-3 border border-border rounded-2xl opacity-80 text-sm bg-gray-50">
+                {settings.phone_number || "—"}
               </div>
-              <p className="text-[12px] text-gray-400 mt-1">
-                Cannot be changed here
+              <p className="text-[11px] opacity-75 mt-1">
+                Cannot be changed here — contact support
               </p>
             </div>
           </div>
@@ -410,168 +625,340 @@ export default function Settings() {
           <button
             onClick={handleSaveContact}
             disabled={savingSection === "contact"}
-            className="mt-10 w-full sm:w-auto px-8 py-3.5 bg-acborder-accent hover:bg-actext-accent disabled:opacity-70 text-white font-semibold rounded-2xl flex items-center justify-center gap-3 transition-all"
+            className="mt-6 sm:mt-8 w-full sm:w-auto px-8 py-3 bg-accent hover:bg-black disabled:opacity-60 text-white font-semibold rounded-2xl flex items-center justify-center gap-2 transition-colors text-sm"
           >
             {savingSection === "contact" && (
-              <Loader2 className="animate-spin" size={20} />
+              <Loader2 className="animate-spin" size={16} />
             )}
             Save Contact Info
           </button>
         </div>
       )}
 
-      {/* Compliance Tab */}
+      {/* ── Compliance Tab ── */}
       {activeTab === "compliance" && (
-        <div className="bg-white rounded-3xl border border-gray-200 p-8">
-          <h2 className="text-xl font-semibold mb-2">
-            Business Verification (KYC)
-          </h2>
-          <p className="text-gray-500 mb-8">
-            Complete your business verification to unlock full platform
-            features.
+        <div className="bg-background rounded-2xl sm:rounded-3xl border border-border p-4 sm:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
+            <h2 className="text-lg sm:text-xl font-semibold">
+              Business Verification (KYC)
+            </h2>
+            <VerificationBadge status={settings.verification_status} />
+          </div>
+          <p className="opacity-80 text-xs sm:text-sm mb-6 sm:mb-8">
+            Complete all fields and upload required documents to unlock full
+            platform features.
           </p>
 
-          <div className="space-y-10">
+          <div className="space-y-8 sm:space-y-10">
             {/* Business Info */}
             <div>
-              <h3 className="font-semibold mb-4 text-lg">
+              <h3 className="font-semibold mb-4 text-sm sm:text-[15px]">
                 Business Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                 <div>
-                  <label className="block text-[12px] font-medium mb-2">
+                  <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
                     Registration Number (RC / BN)
                   </label>
                   <input
                     type="text"
                     value={complianceForm.registration_number}
                     onChange={(e) =>
-                      setComplianceForm({
-                        ...complianceForm,
+                      setComplianceForm((f) => ({
+                        ...f,
                         registration_number: e.target.value,
-                      })
+                      }))
                     }
-                    className="w-full px-5 py-3 border border-gray-200 rounded-2xl focus:border-violet-500 outline-none"
+                    className={clsx(
+                      "w-full px-4 py-2.5 border rounded-2xl focus:border-gray-400 outline-none text-sm",
+                      validationErrors.has("Registration Number")
+                        ? "border-red-400 bg-red-50"
+                        : "border-border",
+                    )}
+                    placeholder="RC7862588"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-[12px] font-medium mb-2">
+                  <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
                     Business Type
                   </label>
-                  <select
-                    value={complianceForm.business_type}
-                    onChange={(e) =>
-                      setComplianceForm({
-                        ...complianceForm,
-                        business_type: e.target.value,
-                      })
-                    }
-                    className="w-full px-5 py-3 border border-gray-200 rounded-2xl focus:border-violet-500 outline-none"
+                  <div
+                    className={clsx(
+                      "px-4 py-2.5 border rounded-2xl",
+                      validationErrors.has("Business Type")
+                        ? "border-red-400 bg-red-50"
+                        : "border-border",
+                    )}
                   >
-                    {BUSINESS_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
+                    <select
+                      value={complianceForm.business_type}
+                      onChange={(e) =>
+                        setComplianceForm((f) => ({
+                          ...f,
+                          business_type: e.target.value,
+                        }))
+                      }
+                      className="w-full focus:border-gray-400 outline-none text-sm bg-transparent"
+                    >
+                      <option value="">Select type</option>
+                      {BUSINESS_TYPES.map((type) => (
+                        <option key={type} value={type}>
+                          {type.charAt(0).toUpperCase() + type.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
+                    Industry
+                  </label>
+                  <div
+                    className={clsx(
+                      "px-4 py-2.5 border rounded-2xl",
+                      validationErrors.has("Industry")
+                        ? "border-red-400 bg-red-50"
+                        : "border-border",
+                    )}
+                  >
+                    <select
+                      value={complianceForm.business_industry}
+                      onChange={(e) =>
+                        setComplianceForm((f) => ({
+                          ...f,
+                          business_industry: e.target.value,
+                        }))
+                      }
+                      className="w-full focus:border-gray-400 outline-none text-sm bg-transparent"
+                    >
+                      <option value="">Select industry</option>
+                      {BUSINESS_INDUSTRIES.map((ind) => (
+                        <option key={ind} value={ind}>
+                          {ind}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
+                    BVN (Bank Verification Number)
+                  </label>
+                  <input
+                    type="text"
+                    value={complianceForm.bvn}
+                    onChange={(e) => {
+                      const val = e.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 11);
+                      setComplianceForm((f) => ({ ...f, bvn: val }));
+                    }}
+                    className={clsx(
+                      "w-full sm:max-w-sm px-4 py-2.5 border rounded-2xl focus:border-gray-400 outline-none text-sm font-mono tracking-wider",
+                      validationErrors.has("BVN (must be 11 digits)")
+                        ? "border-red-400 bg-red-50"
+                        : "border-border",
+                    )}
+                    placeholder="11-digit BVN"
+                    maxLength={11}
+                  />
+                  <p className="text-[11px] opacity-75 mt-1">
+                    Required for live virtual account generation. Must be 11
+                    digits.
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Documents */}
             <div>
-              <h3 className="font-semibold mb-4 text-lg">Required Documents</h3>
-              <div className="space-y-4">
-                {getDocumentDisplay("nin", "National Identity Number (NIN)")}
-                {getDocumentDisplay("cac_certificate", "CAC Certificate")}
-                {getDocumentDisplay("status_report", "Company Status Report")}
-                {getDocumentDisplay(
-                  "memorandum",
-                  "Memorandum & Articles of Association",
-                )}
-                {getDocumentDisplay("board_resolution", "Board Resolution")}
+              <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-[15px]">
+                Required Documents
+              </h3>
+              <p className="text-xs opacity-80 mb-3 sm:mb-4">
+                Accepted formats: PDF, JPEG, PNG, GIF, WEBP · Max size: 5MB per
+                file
+              </p>
+              <div className="space-y-2.5 sm:space-y-3">
+                {DOC_FIELDS.map(({ key, label, serverKey }) => (
+                  <DocRow
+                    key={key}
+                    docKey={key}
+                    label={label}
+                    serverKey={serverKey}
+                  />
+                ))}
               </div>
             </div>
+
+            {/* Completion indicator */}
+            {(() => {
+              const filled = [
+                complianceForm.registration_number,
+                complianceForm.business_type,
+                complianceForm.business_industry,
+                complianceForm.bvn,
+                settings.nin_image_path || selectedFiles.nin,
+                settings.cac_certificate_path || selectedFiles.cac_certificate,
+                settings.status_report_path || selectedFiles.status_report,
+                settings.memorandum_path || selectedFiles.memorandum,
+                settings.board_resolution_path ||
+                  selectedFiles.board_resolution,
+              ].filter(Boolean).length;
+              const total = 9;
+              const pct = Math.round((filled / total) * 100);
+              return (
+                <div className="rounded-2xl p-3 sm:p-4 border border-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-gray-700">
+                      Completion
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {pct}%
+                    </p>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={clsx(
+                        "h-2 rounded-full transition-all",
+                        pct === 100
+                          ? "bg-green-500"
+                          : pct > 50
+                            ? "bg-blue-500"
+                            : "bg-amber-400",
+                      )}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] opacity-75 mt-2">
+                    {filled} of {total} fields completed
+                    {pct === 100 ? " — Ready to submit!" : ""}
+                  </p>
+                </div>
+              );
+            })()}
           </div>
 
           <button
             onClick={handleSaveCompliance}
             disabled={savingSection === "compliance"}
-            className="mt-10 w-full sm:w-auto px-10 py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-70 text-white font-semibold rounded-2xl flex items-center justify-center gap-3 transition-all"
+            className="mt-6 sm:mt-8 w-full sm:w-auto px-10 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold rounded-2xl flex items-center justify-center gap-2 transition-colors text-sm"
           >
             {savingSection === "compliance" && (
-              <Loader2 className="animate-spin" size={20} />
+              <Loader2 className="animate-spin" size={16} />
             )}
             Submit Compliance Documents
           </button>
         </div>
       )}
 
-      {/* Preferences Tab */}
+      {/* ── Preferences Tab ── */}
       {activeTab === "preferences" && (
-        <div className="bg-white rounded-3xl border border-gray-200 p-8 max-w-2xl">
-          <h2 className="text-xl font-semibold mb-8">Preferences</h2>
+        <div className="bg-background rounded-2xl sm:rounded-3xl border border-border p-4 sm:p-8 max-w-2xl">
+          <h2 className="text-lg sm:text-xl font-semibold mb-6 sm:mb-8">
+            Preferences
+          </h2>
 
-          <div className="space-y-10">
+          <div className="space-y-8 sm:space-y-10">
             {/* Notifications */}
             <div>
-              <h3 className="font-semibold mb-5 flex items-center gap-2">
-                <Bell size={20} /> Notifications
+              <h3 className="font-semibold mb-4 sm:mb-5 flex items-center gap-2 text-sm sm:text-[15px]">
+                <Bell size={16} /> Notifications
               </h3>
-              <div className="space-y-4">
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-[15px]">Email Notifications</span>
-                  <input
-                    type="checkbox"
-                    checked={preferencesForm.receive_email_notifications}
-                    onChange={(e) =>
-                      setPreferencesForm((prev) => ({
-                        ...prev,
-                        receive_email_notifications: e.target.checked,
-                      }))
-                    }
-                    className="w-4 h-4 accent-acborder-accent"
-                  />
-                </label>
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-[15px]">SMS Notifications</span>
-                  <input
-                    type="checkbox"
-                    checked={preferencesForm.receive_sms_notifications}
-                    onChange={(e) =>
-                      setPreferencesForm((prev) => ({
-                        ...prev,
-                        receive_sms_notifications: e.target.checked,
-                      }))
-                    }
-                    className="w-4 h-4 accent-acborder-accent"
-                  />
-                </label>
+              <div className="space-y-3 sm:space-y-4">
+                {[
+                  {
+                    key: "receive_email_notifications" as const,
+                    label: "Email Notifications",
+                    sub: "Receive payment alerts and account updates via email",
+                  },
+                  {
+                    key: "receive_sms_notifications" as const,
+                    label: "SMS Notifications",
+                    sub: "Receive real-time SMS alerts for transactions",
+                  },
+                ].map(({ key, label, sub }) => (
+                  <label
+                    key={key}
+                    className="flex items-center justify-between cursor-pointer gap-3 p-3 sm:p-4 border border-border rounded-2xl transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{label}</p>
+                      <p className="text-[12px] opacity-75 leading-snug mt-0.5">
+                        {sub}
+                      </p>
+                    </div>
+                    {/* Toggle */}
+                    <div className="relative shrink-0">
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={preferencesForm[key]}
+                        onChange={(e) =>
+                          setPreferencesForm((prev) => ({
+                            ...prev,
+                            [key]: e.target.checked,
+                          }))
+                        }
+                      />
+                      <div
+                        className={clsx(
+                          "w-11 h-6 rounded-full transition-colors",
+                          preferencesForm[key] ? "bg-accent" : "bg-gray-200",
+                        )}
+                        onClick={() =>
+                          setPreferencesForm((prev) => ({
+                            ...prev,
+                            [key]: !prev[key],
+                          }))
+                        }
+                      >
+                        <div
+                          className={clsx(
+                            "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform",
+                            preferencesForm[key]
+                              ? "translate-x-5"
+                              : "translate-x-0.5",
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </label>
+                ))}
               </div>
             </div>
 
             {/* Appearance */}
             <div>
-              <h3 className="font-semibold mb-5 flex items-center gap-2">
-                <Palette size={20} /> Appearance
+              <h3 className="font-semibold mb-2 flex items-center gap-2 text-sm sm:text-[15px]">
+                <Palette size={16} /> Appearance
               </h3>
-              <div className="flex gap-3">
-                {(["light", "dark", "system"] as const).map((theme) => (
+              <p className="text-[12px] opacity-75 mb-3 sm:mb-4">
+                Preference is saved locally to your browser
+              </p>
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                {(["light", "dark", "system"] as Theme[]).map((theme) => (
                   <button
                     key={theme}
-                    onClick={() =>
-                      setPreferencesForm((prev) => ({ ...prev, theme }))
-                    }
+                    onClick={() => {
+                      setPreferencesForm((prev) => ({ ...prev, theme }));
+                      applyTheme(theme);
+                    }}
                     className={clsx(
-                      "flex-1 py-2 rounded-2xl border text-sm font-medium transition-all",
+                      "py-2.5 sm:py-3 rounded-2xl border text-xs sm:text-sm font-medium transition-all",
                       preferencesForm.theme === theme
-                        ? "border-accent bg-violet-50 text-accent"
-                        : "border-gray-200 hover:border-gray-300",
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border hover:border-gray-400 text-gray-600",
                     )}
                   >
-                    {theme === "system"
-                      ? "System"
-                      : theme.charAt(0).toUpperCase() + theme.slice(1)}
+                    {theme === "light"
+                      ? "Light"
+                      : theme === "dark"
+                        ? "Dark"
+                        : "System"}
                   </button>
                 ))}
               </div>
@@ -581,10 +968,10 @@ export default function Settings() {
           <button
             onClick={handleSavePreferences}
             disabled={savingSection === "preferences"}
-            className="mt-12 w-full sm:w-auto px-10 py-3.5 bg-gray-900 hover:bg-black text-white font-semibold rounded-2xl flex items-center justify-center gap-3 transition-all"
+            className="mt-8 sm:mt-10 w-full sm:w-auto px-10 py-3 bg-accent hover:bg-black disabled:opacity-60 text-white font-semibold rounded-2xl flex items-center justify-center gap-2 transition-colors text-sm"
           >
             {savingSection === "preferences" && (
-              <Loader2 className="animate-spin" size={20} />
+              <Loader2 className="animate-spin" size={16} />
             )}
             Save Preferences
           </button>
