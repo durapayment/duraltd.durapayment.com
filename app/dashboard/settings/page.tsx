@@ -691,8 +691,9 @@ export default function Settings() {
 
       {/* ── Compliance Tab ── */}
       {activeTab === "compliance" && (
-        <div className="bg-background rounded-2xl sm:rounded-3xl border border-border p-4 sm:p-8">
-          <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
+        <div className="bg-background rounded-2xl sm:rounded-3xl border border-border p-4 sm:p-8 w-full overflow-hidden">
+          {/* Header: stack vertically on mobile so the badge never pushes content wide */}
+          <div className="flex flex-col min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between gap-2 mb-2">
             <h2 className="text-lg sm:text-xl font-semibold">
               Business Verification (KYC)
             </h2>
@@ -709,8 +710,8 @@ export default function Settings() {
               <h3 className="font-semibold mb-4 text-sm sm:text-[15px]">
                 Business Information
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 w-full">
+                <div className="w-full min-w-0">
                   <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
                     Registration Number (RC / BN)
                   </label>
@@ -733,13 +734,13 @@ export default function Settings() {
                   />
                 </div>
 
-                <div>
+                <div className="w-full min-w-0">
                   <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
                     Business Type
                   </label>
                   <div
                     className={clsx(
-                      "px-4 py-2.5 border rounded-2xl",
+                      "px-4 py-2.5 border rounded-2xl w-full",
                       validationErrors.has("Business Type")
                         ? "border-red-400 bg-red-50"
                         : "border-border",
@@ -765,13 +766,13 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <div>
+                <div className="w-full min-w-0">
                   <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
                     Industry
                   </label>
                   <div
                     className={clsx(
-                      "px-4 py-2.5 border rounded-2xl",
+                      "px-4 py-2.5 border rounded-2xl w-full",
                       validationErrors.has("Industry")
                         ? "border-red-400 bg-red-50"
                         : "border-border",
@@ -797,12 +798,14 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <div className="sm:col-span-2">
+                {/* BVN spans full width on both mobile and desktop */}
+                <div className="col-span-1 sm:col-span-2 w-full min-w-0">
                   <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
                     BVN (Bank Verification Number)
                   </label>
                   <input
                     type="text"
+                    inputMode="numeric"
                     value={complianceForm.bvn}
                     onChange={(e) => {
                       const val = e.target.value
@@ -811,8 +814,6 @@ export default function Settings() {
                       setComplianceForm((f) => ({ ...f, bvn: val }));
                     }}
                     className={clsx(
-                      // FIX: removed `sm:max-w-sm` — it caused layout inconsistency
-                      // on mid-sized screens. Width is now full within its grid cell.
                       "w-full px-4 py-2.5 border rounded-2xl focus:border-gray-400 outline-none text-sm font-mono tracking-wider",
                       validationErrors.has("BVN (must be 11 digits)")
                         ? "border-red-400 bg-red-50"
@@ -851,7 +852,7 @@ export default function Settings() {
             </div>
 
             {/* Completion indicator */}
-            {/* {(() => {
+            {(() => {
               const filled = [
                 complianceForm.registration_number,
                 complianceForm.business_type,
@@ -895,7 +896,7 @@ export default function Settings() {
                   </p>
                 </div>
               );
-            })()} */}
+            })()}
           </div>
 
           <button
