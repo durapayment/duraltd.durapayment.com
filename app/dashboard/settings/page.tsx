@@ -436,11 +436,11 @@ export default function Settings() {
             </p>
             <div className="text-[12px] opacity-80 mt-0.5">
               {selected ? (
-                <span className="text-blue-600 block truncate">
+                <span className="text-blue-600 block truncate wrap-break-word">
                   {selected.name}
                 </span>
               ) : existingName ? (
-                <span className="text-green-600 flex items-center gap-1 min-w-0">
+                <span className="text-green-600 flex items-center gap-1 min-w-0 wrap-break-word">
                   <CheckCircle size={10} className="shrink-0" />
                   <span className="truncate min-w-0">{existingName}</span>
                 </span>
