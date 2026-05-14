@@ -15,7 +15,6 @@ import {
   ExternalLink,
 } from "lucide-react";
 import clsx from "clsx";
-import { toast } from "react-hot-toast";
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -171,6 +170,17 @@ export default function Settings() {
     new Set(),
   );
 
+  // Inline feedback banner
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  const showFeedback = (type: "success" | "error", message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => setFeedback(null), 6000);
+  };
+
   // Contact form
   const [contactForm, setContactForm] = useState({ alternative_email: "" });
 
@@ -255,14 +265,17 @@ export default function Settings() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to save");
-      toast.success("Contact information updated");
+      showFeedback("success", "Contact information updated.");
       setSettings((prev) =>
         prev
           ? { ...prev, alternative_email: contactForm.alternative_email }
           : prev,
       );
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to save");
+      showFeedback(
+        "error",
+        err instanceof Error ? err.message : "Failed to save.",
+      );
     } finally {
       setSavingSection(null);
     }
@@ -292,12 +305,9 @@ export default function Settings() {
 
     if (missingFields.length > 0) {
       setValidationErrors(new Set(missingFields));
-      toast.error(
+      showFeedback(
+        "error",
         `Please complete the following:\n• ${missingFields.join("\n• ")}`,
-        {
-          duration: 6000,
-          style: { whiteSpace: "pre-line", maxWidth: 360 },
-        },
       );
       return;
     }
@@ -331,7 +341,7 @@ export default function Settings() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to save compliance");
 
-      toast.success("Compliance documents submitted");
+      showFeedback("success", "Compliance documents submitted successfully.");
 
       if (data.data) {
         setSettings((prev) => (prev ? { ...prev, ...data.data } : prev));
@@ -345,8 +355,9 @@ export default function Settings() {
         board_resolution: null,
       });
     } catch (err: unknown) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to save compliance",
+      showFeedback(
+        "error",
+        err instanceof Error ? err.message : "Failed to save compliance.",
       );
     } finally {
       setSavingSection(null);
@@ -358,9 +369,9 @@ export default function Settings() {
     setSavingSection("preferences");
     try {
       applyTheme(preferencesForm.theme);
-      toast.success("Preferences saved");
+      showFeedback("success", "Preferences saved.");
     } catch (err: unknown) {
-      toast.error("Failed to save preferences");
+      showFeedback("error", "Failed to save preferences.");
     } finally {
       setSavingSection(null);
     }
@@ -447,7 +458,7 @@ export default function Settings() {
   // ── Render guards ─────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-75 flex items-center justify-center">
+      <div className="min-h-[300px] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="animate-spin opacity-75" size={32} />
           <p className="opacity-80 text-sm">Loading settings...</p>
@@ -486,6 +497,32 @@ export default function Settings() {
         </p>
       </div>
 
+      {/* ── Feedback banner ── */}
+      {feedback && (
+        <div
+          className={clsx(
+            "mb-5 rounded-xl border px-4 py-3 text-sm flex items-start gap-2.5",
+            feedback.type === "success"
+              ? "bg-green-50 border-green-300 text-green-800"
+              : "bg-red-50 border-red-300 text-red-800",
+          )}
+        >
+          {feedback.type === "success" ? (
+            <CheckCircle size={16} className="shrink-0 mt-0.5 text-green-600" />
+          ) : (
+            <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
+          )}
+          <p className="whitespace-pre-line leading-snug">{feedback.message}</p>
+          <button
+            onClick={() => setFeedback(null)}
+            className="ml-auto shrink-0 opacity-50 hover:opacity-100 transition-opacity text-lg leading-none"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* ── Tabs ── */}
       {/*
         Key responsive behaviours:
@@ -495,11 +532,10 @@ export default function Settings() {
         • scroll-snap gives a nice snap feel on mobile
       */}
       <div
-        className="w-full border-b border-border mb-6 overflow-x-auto scroll-smooth 
-             [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        className="w-full overflow-x-auto border-b border-border mb-5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         role="tablist"
       >
-        <div className="flex min-w-fit gap-1 px-1 sm:px-0">
+        <div className="flex min-w-max">
           {(
             [
               { id: "profile", label: "Profile", icon: User },
@@ -514,26 +550,19 @@ export default function Settings() {
               aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={clsx(
-                "group flex items-center gap-2 px-4 py-3 sm:py-4 rounded-t-lg",
-                "border-b-2 transition-all duration-200 whitespace-nowrap text-sm font-medium",
-                "min-h-13 active:scale-[0.985]", // better touch target
+                "flex items-center gap-1.5 pb-3 sm:pb-4",
+                "px-3 sm:px-4 first:pl-0",
+                "border-b-2 transition-all whitespace-nowrap text-sm font-medium",
                 activeTab === tab.id
                   ? "border-accent text-accent"
-                  : "border-transparent hover:text-foreground/80 text-muted-foreground",
+                  : "border-transparent opacity-80 hover:text-gray-700",
               )}
             >
-              <tab.icon
-                size={18}
-                className="shrink-0 transition-transform group-hover:scale-110"
-              />
-
-              {/* Label - Responsive visibility */}
-              <span className="hidden sm:inline">{tab.label}</span>
-
-              {/* Compliance indicator */}
+              <tab.icon size={15} className="shrink-0" />
+              <span className="hidden min-[360px]:inline">{tab.label}</span>
               {tab.id === "compliance" &&
                 settings.verification_status !== "verified" && (
-                  <span className="w-2 h-2 rounded-full bg-amber-500 ring-2 ring-background shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block shrink-0" />
                 )}
             </button>
           ))}
@@ -675,7 +704,7 @@ export default function Settings() {
                         ? "border-red-400 bg-red-50"
                         : "border-border",
                     )}
-                    placeholder="RC7862588"
+                    placeholder="RC-1234567"
                   />
                 </div>
 

@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
     );
 
     const data = await response.json();
+    console.log(data);
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Settings compliance POST error:", error);
