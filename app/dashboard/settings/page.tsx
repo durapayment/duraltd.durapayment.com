@@ -851,7 +851,7 @@ export default function Settings() {
             </div>
 
             {/* Completion indicator */}
-            {(() => {
+            {/* {(() => {
               const filled = [
                 complianceForm.registration_number,
                 complianceForm.business_type,
@@ -895,7 +895,7 @@ export default function Settings() {
                   </p>
                 </div>
               );
-            })()}
+            })()} */}
           </div>
 
           <button
