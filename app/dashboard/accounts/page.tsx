@@ -504,7 +504,7 @@ export default function AccountsPage() {
             </p>
             <p className="text-[30px] text-white font-semibold">
               {showBalance
-                ? `₦${Number(business?.balance ?? 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
+                ? `₦${Number(business?.account_balance ?? 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
                 : "****,***.**"}
             </p>
           </div>
