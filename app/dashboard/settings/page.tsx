@@ -599,7 +599,6 @@ export default function Settings() {
               <User className="opacity-75 shrink-0" size={18} />
               Personal & Business Information
             </h2>
-            <VerificationBadge status={settings.verification_status} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-8">
