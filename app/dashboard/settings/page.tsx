@@ -419,32 +419,35 @@ export default function Settings() {
     return (
       <div
         className={clsx(
-          "flex flex-col justify-between p-3 sm:p-4 border rounded-2xl gap-3",
+          "flex flex-col min-[480px]:flex-row min-[480px]:items-center justify-between",
+          "p-3 sm:p-4 border rounded-2xl gap-3 w-full overflow-hidden",
           hasError ? "border-red-400 bg-red-50" : "border-border",
         )}
       >
         {/* Label + status */}
-        <div className="flex items-start min-[480px]:items-center gap-3 min-w-0">
+        <div className="flex items-start min-[480px]:items-center gap-3 min-w-0 flex-1">
           <FileText
             className="opacity-75 shrink-0 mt-0.5 min-[480px]:mt-0"
             size={18}
           />
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 overflow-hidden">
             <p className="font-medium text-sm leading-snug break-words">
               {label}
             </p>
-            <p className="text-[12px] opacity-80 truncate mt-0.5">
+            <div className="text-[12px] opacity-80 mt-0.5 min-w-0 overflow-hidden">
               {selected ? (
-                <span className="text-blue-600">{selected.name}</span>
+                <span className="text-blue-600 block truncate">
+                  {selected.name}
+                </span>
               ) : existingName ? (
-                <span className="text-green-600 flex items-center gap-1">
+                <span className="text-green-600 flex items-center gap-1 min-w-0">
                   <CheckCircle size={10} className="shrink-0" />
-                  <span className="truncate">{existingName}</span>
+                  <span className="truncate min-w-0">{existingName}</span>
                 </span>
               ) : (
-                "No file uploaded"
+                <span className="text-gray-400">No file uploaded</span>
               )}
-            </p>
+            </div>
           </div>
         </div>
 
@@ -464,7 +467,7 @@ export default function Settings() {
           <button
             type="button"
             onClick={() => triggerFileInput(docKey)}
-            className="px-3 py-1.5 text-sm font-medium opacity-80 hover:bg-gray-100 border border-gray-200 rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap"
+            className="px-3 py-1.5 text-sm font-medium opacity-80 hover:bg-gray-100 border border-gray-200 rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0"
           >
             <Upload size={13} />
             {existingName || selected ? "Replace" : "Upload"}
