@@ -419,7 +419,7 @@ export default function Settings() {
     return (
       <div
         className={clsx(
-          "flex flex-col min-[480px]:flex-row min-[480px]:items-center justify-between p-3 sm:p-4 border rounded-2xl gap-3",
+          "flex flex-col justify-between p-3 sm:p-4 border rounded-2xl gap-3",
           hasError ? "border-red-400 bg-red-50" : "border-border",
         )}
       >
@@ -832,7 +832,7 @@ export default function Settings() {
             </div>
 
             {/* Documents */}
-            {/* <div>
+            <div className="w-full min-w-0">
               <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-[15px]">
                 Required Documents
               </h3>
@@ -840,7 +840,7 @@ export default function Settings() {
                 Accepted formats: PDF, JPEG, PNG, GIF, WEBP · Max size: 5MB per
                 file
               </p>
-              <div className="space-y-2.5 sm:space-y-3">
+              <div className="space-y-2.5 sm:space-y-3 w-full">
                 {DOC_FIELDS.map(({ key, label, serverKey }) => (
                   <DocRow
                     key={key}
@@ -850,7 +850,7 @@ export default function Settings() {
                   />
                 ))}
               </div>
-            </div> */}
+            </div>
 
             {/* Completion indicator */}
             {(() => {
