@@ -6,14 +6,17 @@ import {
   BookOpen,
   PlayCircle,
   MessageCircle,
-  Clock,
   Mail,
   Phone,
   Send,
   ChevronDown,
   Loader2,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import clsx from "clsx";
+import Link from "next/link";
+import { siteConfig } from "@/config/site";
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -25,17 +28,14 @@ interface FAQItem {
   category?: string;
 }
 
-interface Business {
-  verification_status: "verified" | "pending" | "rejected";
-  name: string;
-}
-
 interface ContactForm {
   subject: string;
   message: string;
 }
 
-// Sample FAQs
+// ─────────────────────────────────────────────────────────
+// Data
+// ─────────────────────────────────────────────────────────
 const FAQ_ITEMS: FAQItem[] = [
   {
     id: 1,
@@ -55,7 +55,7 @@ const FAQ_ITEMS: FAQItem[] = [
     id: 3,
     question: "How long does it take for funds to settle?",
     answer:
-      "Payouts to Nigerian bank accounts are typically settled within 30 minutes during banking hours. International transfers may take 1-3 business days.",
+      "Payouts to Nigerian bank accounts are typically settled within 30 minutes during banking hours. International transfers may take 1–3 business days.",
     category: "Payments",
   },
   {
@@ -76,23 +76,27 @@ const FAQ_ITEMS: FAQItem[] = [
     id: 6,
     question: "How do I contact support outside business hours?",
     answer:
-      "You can submit a ticket via the form below. We aim to respond within 4-24 hours. For urgent issues, email support@yourcompany.com.",
+      "You can submit a ticket via the form below. We aim to respond within 4–24 hours. For urgent issues, email support@yourcompany.com.",
     category: "Support",
   },
 ];
 
+// Category color map — uses semantic opacity-based tints that work in both themes
+const CATEGORY_STYLES: Record<string, string> = {
+  API: "bg-accent/10 text-accent",
+  Account: "bg-amber-500/10 text-amber-500",
+  Payments: "bg-emerald-500/10 text-emerald-500",
+  Support: "bg-blue-500/10 text-blue-500",
+};
+
+// ─────────────────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────────────────
 export default function HelpSupport() {
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
-  const [business, setBusiness] = useState<Business>({
-    verification_status: "pending",
-    name: "Acme Corp",
-  });
-
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredFAQs, setFilteredFAQs] = useState<FAQItem[]>(FAQ_ITEMS);
-  const [openFAQ, setOpenFAQ] = useState<number>(1); // First FAQ open by default
-
+  const [openFAQ, setOpenFAQ] = useState<number>(1);
   const [contactForm, setContactForm] = useState<ContactForm>({
     subject: "",
     message: "",
@@ -103,39 +107,26 @@ export default function HelpSupport() {
     type: "success" | "error";
   } | null>(null);
 
-  // Simulate authentication
+  // Simulate auth check
   useEffect(() => {
-    const checkAuth = async () => {
-      // Mock delay
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
-      // Mock authenticated user
-      setUser({
-        id: "user_123",
-        name: "John Doe",
-        email: "john@acmecorp.com",
-      });
-
-      setIsLoading(false);
-    };
-
-    checkAuth();
+    const t = setTimeout(() => setIsLoading(false), 600);
+    return () => clearTimeout(t);
   }, []);
 
-  // Filter FAQs
+  // Filter FAQs on search
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredFAQs(FAQ_ITEMS);
       return;
     }
-
     const q = searchQuery.toLowerCase().trim();
-    const filtered = FAQ_ITEMS.filter(
-      (faq) =>
-        faq.question.toLowerCase().includes(q) ||
-        faq.answer.toLowerCase().includes(q),
+    setFilteredFAQs(
+      FAQ_ITEMS.filter(
+        (faq) =>
+          faq.question.toLowerCase().includes(q) ||
+          faq.answer.toLowerCase().includes(q),
+      ),
     );
-    setFilteredFAQs(filtered);
   }, [searchQuery]);
 
   const showToast = (
@@ -148,24 +139,14 @@ export default function HelpSupport() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const trimmedSubject = contactForm.subject.trim();
-    const trimmedMessage = contactForm.message.trim();
-
-    if (!trimmedSubject || !trimmedMessage) {
+    if (!contactForm.subject.trim() || !contactForm.message.trim()) {
       showToast("Please fill in both subject and message fields.", "error");
       return;
     }
-
     setSubmitting(true);
-
-    // Simulate API call
     try {
       await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      showToast("Message sent successfully! We'll get back to you soon.");
-
-      // Reset form
+      showToast("Message sent! We'll get back to you soon.");
       setContactForm({ subject: "", message: "" });
     } catch {
       showToast("Failed to send message. Please try again.", "error");
@@ -174,130 +155,116 @@ export default function HelpSupport() {
     }
   };
 
-  const toggleFAQ = (id: number) => {
-    setOpenFAQ(openFAQ === id ? 0 : id);
-  };
+  const toggleFAQ = (id: number) => setOpenFAQ(openFAQ === id ? 0 : id);
 
+  // ── Loading ────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="min-h-screen flex mt-10 justify-center bg-gray-50">
-        <div className="flex flex-col items-center">
-          <Loader2 className="animate-spin text-accent" size={25} />
-        </div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="animate-spin text-accent" size={28} />
       </div>
     );
   }
 
+  // ── Page ───────────────────────────────────────
   return (
-    <section className="max-w-5xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+    <section className="max-w-5xl mx-auto px-3 sm:px-4 py-5 sm:py-8">
+      {/* ── Header ── */}
+      <div className="mb-8 sm:mb-10">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
           Help &amp; Support
         </h1>
-        <p className="text-gray-600 mt-2 max-w-md">
+        <p className="opacity-70 mt-1.5 text-sm sm:text-base max-w-md">
           Find answers, explore documentation, or reach out to our support team.
         </p>
       </div>
 
-      {/* Quick Actions */}
-      <div className="mb-12">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">
+      {/* ── Quick Actions ── */}
+      <div className="mb-10 sm:mb-12">
+        <h2 className="text-base sm:text-lg font-semibold mb-4 opacity-90">
           Quick Actions
         </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           {/* Documentation */}
-          <div
-            onClick={() => window.open("/docs", "_blank")}
-            className="group bg-white border border-gray-200 rounded-3xl p-8 hover:border-violet-300 hover:shadow-lg transition-all cursor-pointer"
+          <Link
+            type="button"
+            target="_blank"
+            href={siteConfig.docUrl}
+            className="group bg-background border border-border rounded-2xl sm:rounded-3xl p-5 sm:p-7 text-left hover:border-accent/40 hover:shadow-md transition-all"
           >
-            <div className="w-12 h-12 bg-violet-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-              <BookOpen className="text-accent" size={28} />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-accent/10 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-5 group-hover:scale-110 transition-transform">
+              <BookOpen className="text-accent" size={22} />
             </div>
-            <h3 className="font-semibold text-xl mb-2">Documentation</h3>
-            <p className="text-gray-600">
+            <p className="font-semibold text-base sm:text-lg mb-1">
+              Documentation
+            </p>
+            <p className="text-sm opacity-60 leading-snug">
               API references, integration guides, and SDKs
             </p>
-            <div className="mt-6 text-accent text-sm font-medium flex items-center gap-2">
+            <p className="mt-4 text-accent text-xs sm:text-sm font-medium">
               Explore docs →
-            </div>
-          </div>
+            </p>
+          </Link>
 
           {/* Video Tutorials */}
-          <div
+          <button
+            type="button"
             onClick={() => alert("Video tutorials coming soon!")}
-            className="group bg-white border border-gray-200 rounded-3xl p-8 hover:border-violet-300 hover:shadow-lg transition-all cursor-pointer"
+            className="group bg-background border border-border rounded-2xl sm:rounded-3xl p-5 sm:p-7 text-left hover:border-rose-500/30 hover:shadow-md transition-all"
           >
-            <div className="w-12 h-12 bg-rose-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-              <PlayCircle className="text-rose-600" size={28} />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-rose-500/10 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-5 group-hover:scale-110 transition-transform">
+              <PlayCircle className="text-rose-500" size={22} />
             </div>
-            <h3 className="font-semibold text-xl mb-2">Video Tutorials</h3>
-            <p className="text-gray-600">
+            <p className="font-semibold text-base sm:text-lg mb-1">
+              Video Tutorials
+            </p>
+            <p className="text-sm opacity-60 leading-snug">
               Step-by-step walkthroughs and onboarding videos
             </p>
-            <div className="mt-6 text-rose-600 text-sm font-medium flex items-center gap-2">
+            <p className="mt-4 text-rose-500 text-xs sm:text-sm font-medium">
               Watch videos →
-            </div>
-          </div>
-
-          {/* Live Chat */}
-          <div
-            onClick={() =>
-              alert("Live chat would open here (available Mon–Fri 9AM–5PM)")
-            }
-            className="group bg-white border border-gray-200 rounded-3xl p-8 hover:border-emerald-300 hover:shadow-lg transition-all cursor-pointer relative overflow-hidden"
-          >
-            <div className="absolute top-6 right-6 text-[10px] font-mono bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">
-              LIVE
-            </div>
-            <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-              <MessageCircle className="text-emerald-600" size={28} />
-            </div>
-            <h3 className="font-semibold text-xl mb-2">Live Chat</h3>
-            <p className="text-gray-600">
-              Talk to our support team in real-time
             </p>
-            <div className="mt-6 text-emerald-600 text-sm font-medium flex items-center gap-2">
-              Start chat →
-            </div>
-          </div>
+          </button>
         </div>
       </div>
 
-      {/* FAQ Section */}
-      <div className="mb-16">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+      {/* ── FAQ ── */}
+      <div className="mb-12 sm:mb-16">
+        {/* FAQ header row */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-5 sm:mb-6">
           <div>
-            <h2 className="text-2xl font-semibold text-gray-900">
+            <h2 className="text-xl sm:text-2xl font-semibold">
               Frequently Asked Questions
             </h2>
-            <p className="text-gray-500 mt-1">
+            <p className="opacity-60 mt-1 text-sm">
               Quick answers to common questions
             </p>
           </div>
 
-          <div className="relative w-full sm:w-80">
+          {/* Search */}
+          <div className="relative w-full sm:w-72">
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-              size={18}
+              className="absolute left-4 top-1/2 -translate-y-1/2 opacity-40 pointer-events-none"
+              size={16}
             />
             <input
               type="text"
-              placeholder="Search FAQs..."
+              placeholder="Search FAQs…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-2xl focus:border-violet-500 focus:ring-1 focus:ring-violet-200 outline-none text-sm"
+              className="w-full pl-10 pr-4 py-2.5 border border-border bg-background rounded-2xl focus:border-accent outline-none text-sm transition-colors placeholder:opacity-40"
             />
           </div>
         </div>
 
-        <div className="space-y-3">
+        {/* FAQ list */}
+        <div className="space-y-2.5 sm:space-y-3">
           {filteredFAQs.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-3xl p-12 text-center">
-              <p className="text-gray-500">No FAQs match your search…</p>
+            <div className="bg-background border border-border rounded-2xl sm:rounded-3xl p-10 text-center">
+              <p className="opacity-60 text-sm">No FAQs match your search…</p>
               <button
                 onClick={() => setSearchQuery("")}
-                className="mt-4 text-accent hover:underline text-sm"
+                className="mt-3 text-accent hover:underline text-sm font-medium"
               >
                 Clear search
               </button>
@@ -306,38 +273,46 @@ export default function HelpSupport() {
             filteredFAQs.map((faq) => (
               <div
                 key={faq.id}
-                className="bg-white border border-gray-200 rounded-3xl overflow-hidden"
+                className="bg-background border border-border rounded-2xl sm:rounded-3xl overflow-hidden transition-colors"
               >
                 <button
                   onClick={() => toggleFAQ(faq.id)}
-                  className="w-full px-8 py-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
+                  className="w-full px-5 sm:px-8 py-4 sm:py-5 text-left flex items-start sm:items-center justify-between gap-4 hover:bg-border/30 transition-colors"
                 >
-                  <div>
-                    <p className="font-medium text-gray-900">{faq.question}</p>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm sm:text-base leading-snug">
+                      {faq.question}
+                    </p>
                     {faq.category && (
-                      <span className="inline-block mt-1.5 text-xs px-3 py-1 bg-gray-100 text-gray-500 rounded-full">
+                      <span
+                        className={clsx(
+                          "inline-block mt-1.5 text-[11px] px-2.5 py-0.5 rounded-full font-medium",
+                          CATEGORY_STYLES[faq.category] ??
+                            "bg-border/50 opacity-70",
+                        )}
+                      >
                         {faq.category}
                       </span>
                     )}
                   </div>
                   <ChevronDown
                     className={clsx(
-                      "text-gray-400 transition-transform",
+                      "opacity-50 shrink-0 transition-transform duration-300 mt-0.5 sm:mt-0",
                       openFAQ === faq.id && "rotate-180",
                     )}
-                    size={22}
+                    size={20}
                   />
                 </button>
 
                 <div
                   className={clsx(
-                    "overflow-hidden transition-all duration-300",
+                    "overflow-hidden transition-all duration-300 ease-in-out",
                     openFAQ === faq.id ? "max-h-96" : "max-h-0",
                   )}
                 >
-                  <div className="px-8 pb-8 text-gray-600 leading-relaxed border-t border-gray-100 pt-6">
+                  <p className="px-5 sm:px-8 pb-5 sm:pb-7 pt-4 text-sm sm:text-[15px] opacity-75 leading-relaxed border-t border-border">
                     {faq.answer}
-                  </div>
+                  </p>
                 </div>
               </div>
             ))
@@ -345,21 +320,21 @@ export default function HelpSupport() {
         </div>
       </div>
 
-      {/* Contact Support Form */}
-      <div className="bg-white border border-gray-200 rounded-3xl p-10">
+      {/* ── Contact Support Form ── */}
+      <div className="bg-background border border-border rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10">
         <div className="max-w-2xl mx-auto">
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900">
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-xl sm:text-2xl font-semibold">
               Contact Support
             </h2>
-            <p className="text-gray-600 mt-1">
+            <p className="opacity-60 mt-1 text-sm">
               Our team typically responds within 4–24 hours.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-70 mb-2">
                 Subject
               </label>
               <input
@@ -369,12 +344,12 @@ export default function HelpSupport() {
                   setContactForm({ ...contactForm, subject: e.target.value })
                 }
                 placeholder="e.g., Issue with webhook delivery"
-                className="w-full px-5 py-3 border border-gray-200 rounded-2xl focus:border-violet-500 focus:ring-1 focus:ring-violet-200 outline-none"
+                className="w-full px-4 sm:px-5 py-3 border border-border bg-background rounded-2xl focus:border-accent outline-none text-sm transition-colors placeholder:opacity-40"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-70 mb-2">
                 Message
               </label>
               <textarea
@@ -382,26 +357,26 @@ export default function HelpSupport() {
                 onChange={(e) =>
                   setContactForm({ ...contactForm, message: e.target.value })
                 }
-                placeholder="Please describe your issue in detail..."
-                rows={6}
-                className="w-full px-5 py-4 border border-gray-200 rounded-3xl focus:border-violet-500 focus:ring-1 focus:ring-violet-200 outline-none resize-y min-h-[140px]"
+                placeholder="Please describe your issue in detail…"
+                rows={5}
+                className="w-full px-4 sm:px-5 py-3.5 border border-border bg-background rounded-2xl focus:border-accent outline-none text-sm transition-colors resize-y min-h-[130px] placeholder:opacity-40"
               />
             </div>
 
             <button
               type="submit"
               disabled={submitting}
-              className="w-full sm:w-auto px-10 py-3.5 bg-gray-900 hover:bg-black text-white font-medium rounded-2xl flex items-center justify-center gap-3 disabled:opacity-70 transition-all"
+              className="w-full sm:w-auto px-8 py-3 bg-accent hover:bg-black disabled:opacity-60 text-white font-semibold rounded-2xl flex items-center justify-center gap-2.5 transition-colors text-sm"
             >
               {submitting ? (
                 <>
-                  <Loader2 className="animate-spin" size={25} />
-                  Sending...
+                  <Loader2 className="animate-spin" size={16} />
+                  Sending…
                 </>
               ) : (
                 <>
                   Send Message
-                  <Send size={18} />
+                  <Send size={15} />
                 </>
               )}
             </button>
@@ -409,40 +384,49 @@ export default function HelpSupport() {
         </div>
       </div>
 
-      {/* Footer Info */}
-      <div className="mt-12 text-center text-sm text-gray-500">
-        <p>
+      {/* ── Footer Info ── */}
+      <div className="mt-10 sm:mt-12 text-center">
+        <p className="text-sm opacity-60">
           Expected response time:{" "}
-          <span className="font-medium text-gray-700">4–24 hours</span>
+          <span className="font-semibold opacity-100">4–24 hours</span>
         </p>
-        <div className="flex flex-wrap justify-center gap-x-8 gap-y-1 mt-3 text-xs">
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mt-3">
           <a
-            href="mailto:support@yourcompany.com"
-            className="hover:text-gray-900 flex items-center gap-1.5"
+            href="mailto:support@durapayment.com"
+            className="text-xs opacity-60 hover:opacity-100 flex items-center gap-1.5 transition-opacity"
           >
-            <Mail size={15} /> support@yourcompany.com
+            <Mail size={13} />
+            support@durapayment.com
           </a>
           <a
             href="https://wa.me/2348012345678"
             target="_blank"
-            className="hover:text-gray-900 flex items-center gap-1.5"
+            rel="noreferrer"
+            className="text-xs opacity-60 hover:opacity-100 flex items-center gap-1.5 transition-opacity"
           >
-            <Phone size={15} /> WhatsApp: +234 801 234 5678
+            <Phone size={13} />
+            WhatsApp: +234 801 234 5678
           </a>
         </div>
       </div>
 
-      {/* Toast Notification */}
+      {/* ── Toast ── */}
       {toast && (
         <div
           className={clsx(
-            "fixed bottom-6 right-6 px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 text-sm font-medium z-50",
+            "fixed bottom-5 right-4 sm:right-6 left-4 sm:left-auto sm:max-w-sm",
+            "px-4 py-3.5 rounded-2xl shadow-xl flex items-start gap-3 text-sm font-medium z-50",
             toast.type === "success"
               ? "bg-emerald-600 text-white"
               : "bg-red-600 text-white",
           )}
         >
-          {toast.message}
+          {toast.type === "success" ? (
+            <CheckCircle size={16} className="shrink-0 mt-0.5" />
+          ) : (
+            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          )}
+          <span className="leading-snug">{toast.message}</span>
         </div>
       )}
     </section>

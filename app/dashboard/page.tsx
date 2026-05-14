@@ -99,7 +99,7 @@ export default function DashboardPage() {
           <BusinessVerificationStatus status={business?.verification_status} />
         )}
         {/* Transaction Date */}
-        <div className="flex w-full items-center justify-between">
+        {/* <div className="flex w-full items-center justify-between">
           <div className="flex mt-4 w-max items-center gap-3">
             <div className="h-9 px-4 gap-3 rounded-full flex items-center justify-center bg-dashboard-hover">
               <RiCalendar2Line className="" color="" />
@@ -114,7 +114,7 @@ export default function DashboardPage() {
               <RiRefreshLine />
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Totals */}
         <div className="grid grid-cols-2 lg:grid-cols-4 grid-rows-1 gap-3 ">

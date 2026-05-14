@@ -99,12 +99,12 @@ const DOC_FIELDS: {
   },
 ];
 
-function applyTheme(theme: Theme) {
-  const root = document.documentElement;
-  root.classList.remove("light", "dark");
-  if (theme !== "system") root.classList.add(theme);
-  localStorage.setItem(THEME_KEY, theme);
-}
+// function applyTheme(theme: Theme) {
+//   const root = document.documentElement;
+//   root.classList.remove("light", "dark");
+//   if (theme !== "system") root.classList.add(theme);
+//   localStorage.setItem(THEME_KEY, theme);
+// }
 
 function getStoredTheme(): Theme {
   if (typeof window === "undefined") return "system";
@@ -203,9 +203,9 @@ export default function Settings() {
     theme: "system" as Theme,
   });
 
-  useEffect(() => {
-    applyTheme(getStoredTheme());
-  }, []);
+  // useEffect(() => {
+  //   applyTheme(getStoredTheme());
+  // }, []);
 
   useEffect(() => {
     (async () => {
@@ -358,7 +358,7 @@ export default function Settings() {
   const handleSavePreferences = async () => {
     setSavingSection("preferences");
     try {
-      applyTheme(preferencesForm.theme);
+      // applyTheme(preferencesForm.theme);
 
       const res = await fetch("/api/settings/preferences", {
         method: "POST",
@@ -1004,7 +1004,7 @@ export default function Settings() {
             </div>
 
             {/* Appearance */}
-            <div>
+            {/* <div>
               <h3 className="font-semibold mb-2 flex items-center gap-2 text-sm sm:text-[15px]">
                 <Palette size={16} /> Appearance
               </h3>
@@ -1034,7 +1034,7 @@ export default function Settings() {
                   </button>
                 ))}
               </div>
-            </div>
+            </div> */}
           </div>
 
           <button
