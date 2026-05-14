@@ -62,14 +62,14 @@ export function Navbar({
       </div>
 
       {/* Right */}
-      <div className="flex items-center gap-4">
+      {/* <div className="flex items-center gap-4">
         <div className="h-9 w-9 rounded-full flex items-center justify-center bg-dashboard-hover cursor-pointer">
           <RiSearch2Line size={20} />
         </div>
         <div className="h-9 w-9 rounded-full flex items-center justify-center bg-dashboard-hover cursor-pointer">
           <RiNotification4Line size={20} />
         </div>
-      </div>
+      </div> */}
     </nav>
   );
 }
