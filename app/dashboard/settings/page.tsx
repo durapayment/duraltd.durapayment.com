@@ -74,7 +74,7 @@ const DOC_FIELDS: {
 }[] = [
   {
     key: "nin",
-    label: "National Identity Number (NIN)",
+    label: "Identity Number (NIN)",
     serverKey: "nin_image_path",
   },
   {
@@ -84,12 +84,12 @@ const DOC_FIELDS: {
   },
   {
     key: "status_report",
-    label: "Company Status Report",
+    label: "Status Report",
     serverKey: "status_report_path",
   },
   {
     key: "memorandum",
-    label: "Memorandum & Articles of Association",
+    label: "Memorandum",
     serverKey: "memorandum_path",
   },
   {
@@ -430,8 +430,8 @@ export default function Settings() {
             className="opacity-75 shrink-0 mt-0.5 min-[480px]:mt-0"
             size={18}
           />
-          {/* <div className="min-w-0 flex-1 overflow-hidden">
-            <p className="font-medium text-sm leading-snug break-words">
+          <div className="">
+            <p className="font-medium text-sm leading-snug wrap-break-word">
               {label}
             </p>
             <div className="text-[12px] opacity-80 mt-0.5 min-w-0 overflow-hidden">
@@ -448,7 +448,7 @@ export default function Settings() {
                 <span className="text-gray-400">No file uploaded</span>
               )}
             </div>
-          </div> */}
+          </div>
         </div>
 
         {/* Actions */}
