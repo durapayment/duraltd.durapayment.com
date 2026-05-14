@@ -147,15 +147,9 @@ function VerificationBadge({ status }: { status: string }) {
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${cls}`}
     >
       {status === "verified" ? (
-        <div className="flex items-center gap-2">
-          <CheckCircle size={11} />
-          <p className="capitalize text-[12px]">{status}</p>
-        </div>
+        <CheckCircle size={11} />
       ) : (
-        <div className="flex items-center gap-2">
-          <AlertCircle size={11} />
-          <p className="capitalize text-[12px]">{status}</p>
-        </div>
+        <AlertCircle size={11} />
       )}
       <span className="hidden xs:inline">{label}</span>
     </span>
@@ -374,10 +368,35 @@ export default function Settings() {
   const handleSavePreferences = async () => {
     setSavingSection("preferences");
     try {
+      // Apply theme locally (no server involvement)
       applyTheme(preferencesForm.theme);
+
+      // Save notification prefs to server
+      const res = await fetch("/api/settings/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receive_email_notifications:
+            preferencesForm.receive_email_notifications,
+          receive_sms_notifications: preferencesForm.receive_sms_notifications,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok)
+        throw new Error(data.message || "Failed to save preferences");
+
+      // Sync local settings state with confirmed server values
+      if (data.data) {
+        setSettings((prev) => (prev ? { ...prev, ...data.data } : prev));
+      }
+
       showFeedback("success", "Preferences saved.");
     } catch (err: unknown) {
-      showFeedback("error", "Failed to save preferences.");
+      showFeedback(
+        "error",
+        err instanceof Error ? err.message : "Failed to save preferences.",
+      );
     } finally {
       setSavingSection(null);
     }
