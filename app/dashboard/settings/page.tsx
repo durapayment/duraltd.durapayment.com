@@ -835,7 +835,7 @@ export default function Settings() {
             </div>
 
             {/* Documents */}
-            <div className="w-full min-w-0">
+            <div className="">
               <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-[15px]">
                 Required Documents
               </h3>
@@ -843,15 +843,15 @@ export default function Settings() {
                 Accepted formats: PDF, JPEG, PNG, GIF, WEBP · Max size: 5MB per
                 file
               </p>
-              <div className="">
-                {DOC_FIELDS.map(({ key, label, serverKey }) => (
+              <div className="space-y-2.5 sm:space-y-3 ">
+                {/* {DOC_FIELDS.map(({ key, label, serverKey }) => (
                   <DocRow
                     key={key}
                     docKey={key}
                     label={label}
                     serverKey={serverKey}
                   />
-                ))}
+                ))} */}
               </div>
             </div>
 
