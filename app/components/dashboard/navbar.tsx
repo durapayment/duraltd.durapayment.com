@@ -56,7 +56,7 @@ export function Navbar({
           onClick={onMenuClick}
         />
 
-        <p className="text-[20px] leading-7 font-bold">
+        <p className="text-[20px] leading-7 font-bold truncate max-w-50 sm:max-w-none">
           Hello, <span className="capitalize">{business?.business_name}</span>
         </p>
       </div>
