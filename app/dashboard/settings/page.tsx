@@ -420,7 +420,7 @@ export default function Settings() {
       <div
         className={clsx(
           "flex flex-col min-[480px]:flex-row min-[480px]:items-center justify-between",
-          "p-3 sm:p-4 border rounded-2xl gap-3 w-full overflow-hidden",
+          "p-3 sm:p-4 border rounded-2xl gap-3 ",
           hasError ? "border-red-400 bg-red-50" : "border-border",
         )}
       >
@@ -452,7 +452,7 @@ export default function Settings() {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 shrink-0 self-end min-[480px]:self-auto">
+        {/* <div className="flex items-center gap-2 shrink-0 self-end min-[480px]:self-auto">
           {existingUrl && !selected && (
             <a
               href={existingUrl}
@@ -472,7 +472,7 @@ export default function Settings() {
             <Upload size={13} />
             {existingName || selected ? "Replace" : "Upload"}
           </button>
-        </div>
+        </div> */}
       </div>
     );
   };
@@ -844,21 +844,14 @@ export default function Settings() {
                 file
               </p>
               <div className="space-y-2.5 sm:space-y-3 ">
-                {/* {DOC_FIELDS.map(({ key, label, serverKey }) => (
+                {DOC_FIELDS.map(({ key, label, serverKey }) => (
                   <DocRow
                     key={key}
                     docKey={key}
                     label={label}
                     serverKey={serverKey}
                   />
-                ))} */}
-
-                <p>
-                  Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                  Deserunt voluptate consequatur incidunt maxime earum, ipsa,
-                  quos amet in numquam temporibus totam, officiis omnis
-                  voluptatibus eos? Unde sunt impedit debitis earum?
-                </p>
+                ))}
               </div>
             </div>
 
