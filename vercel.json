@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "app/api/settings/compliance/route.ts": {
+      "maxDuration": 30
+    }
+  }
+}

@@ -305,7 +305,20 @@ export default function Settings() {
 
     setValidationErrors(new Set());
     setSavingSection("compliance");
+
     try {
+      // ── Get access token from HttpOnly cookie via server route ──
+      const tokenRes = await fetch("/api/token");
+      if (!tokenRes.ok) {
+        window.location.href = "/login";
+        return;
+      }
+      const { token } = await tokenRes.json();
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
+
       const formData = new FormData();
       if (complianceForm.registration_number)
         formData.append(
@@ -324,10 +337,17 @@ export default function Settings() {
         },
       );
 
-      const res = await fetch("/api/settings/compliance", {
-        method: "POST",
-        body: formData,
-      });
+      const res = await fetch(
+        "https://api.durapayment.com/api/business/settings/compliance",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+          body: formData,
+        },
+      );
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to save compliance");
@@ -354,7 +374,6 @@ export default function Settings() {
       setSavingSection(null);
     }
   };
-
   const handleSavePreferences = async () => {
     setSavingSection("preferences");
     try {
