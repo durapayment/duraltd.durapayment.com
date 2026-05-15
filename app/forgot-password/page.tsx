@@ -323,8 +323,8 @@ export default function ForgotPasswordPage() {
                   {/* Info text */}
                   <p className="text-[15px] text-black opacity-80">
                     If an account with <strong>{email}</strong> exists, a
-                    6-digit verification code has been sent. Please enter the
-                    code below along with your new password.
+                    6-digit code has been sent. Enter it below with your new
+                    password.
                   </p>
 
                   {/* OTP input */}
