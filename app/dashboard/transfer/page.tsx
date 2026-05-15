@@ -849,7 +849,7 @@ export default function PaymentsPage() {
         {/* ── Page header ── */}
         <div className="flex flex-col md:flex-row gap-3 md:gap-0 items-start md:items-center justify-between mt-4">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Payments</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">Transfer</h1>
             <p className="text-gray-500 text-sm mt-1">
               Bank transfers and settlement history
             </p>
@@ -868,15 +868,15 @@ export default function PaymentsPage() {
           {/* Current balance */}
           <div className="bg-accent px-5 py-6 flex flex-col gap-3 rounded-2xl shadow-sm col-span-1">
             <div className="flex items-center justify-between">
-              <p className="text-xs uppercase tracking-[0.2em] text-white/70">
+              <p className="text-sm uppercase tracking-[0.2em] text-white">
                 Available Balance
               </p>
               <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                <RiWallet3Line size={16} className="text-white" />
+                <RiWallet3Line size={25} className="text-white" />
               </div>
             </div>
-            <p className="text-3xl font-bold text-white">{fmt(balance)}</p>
-            <p className="text-xs text-white/60">
+            <p className="text-[30px] font-bold text-white">{fmt(balance)}</p>
+            <p className="text-sm text-white">
               {business?.bank_name ?? "DuraPayment MFB"} ·{" "}
               {business?.account_number ?? "—"}
             </p>

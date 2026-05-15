@@ -5,8 +5,7 @@ import { Avatar } from "@heroui/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { FaNairaSign } from "react-icons/fa6";
-import { IoClose } from "react-icons/io5"; // ← Add this
+import { IoClose } from "react-icons/io5";
 import {
   RiCustomerServiceLine,
   RiFileHistoryLine,
@@ -14,6 +13,8 @@ import {
   RiLogoutBoxLine,
   RiNotificationBadgeLine,
   RiRecordCircleLine,
+  RiSendPlaneLine,
+  // RiSendPlaneLine,
   RiSettings3Line,
   RiShieldKeyholeLine,
   RiShoppingBag3Line,
@@ -59,9 +60,9 @@ export const AsideBar = ({ onClose }: { onClose?: () => void }) => {
         path: "/dashboard/accounts",
       },
       {
-        title: "Payments",
-        icon: <FaNairaSign size={20} />,
-        path: "/dashboard/payment",
+        title: "Transfer",
+        icon: <RiSendPlaneLine size={20} />,
+        path: "/dashboard/transfer",
       },
       {
         title: "History",
