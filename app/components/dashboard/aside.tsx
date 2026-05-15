@@ -5,6 +5,7 @@ import { Avatar } from "@heroui/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import { FaNairaSign } from "react-icons/fa6";
 import { IoClose } from "react-icons/io5"; // ← Add this
 import {
   RiCustomerServiceLine,
@@ -56,6 +57,11 @@ export const AsideBar = ({ onClose }: { onClose?: () => void }) => {
         title: "Accounts",
         icon: <RiWallet3Line size={20} />,
         path: "/dashboard/accounts",
+      },
+      {
+        title: "Payments",
+        icon: <FaNairaSign size={20} />,
+        path: "/dashboard/payment",
       },
       {
         title: "History",
@@ -116,7 +122,7 @@ export const AsideBar = ({ onClose }: { onClose?: () => void }) => {
               alt="John Doe"
               src="https://img.heroui.chat/image/avatar?w=400&h=400&u=8"
             />
-            <Avatar.Fallback>JD</Avatar.Fallback>
+            <Avatar.Fallback>DP</Avatar.Fallback>
           </Avatar>
           <div className="flex flex-col leading-4">
             <div className="flex items-center gap-1 flex-wrap">
