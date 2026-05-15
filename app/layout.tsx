@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,18 +26,26 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Read nonce injected by middleware — used for any inline scripts
+  const headersList = await headers();
+  const nonce = headersList.get("x-nonce") ?? "";
+
   return (
     <html
       lang="en"
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
-      <body className="h-svh flex flex-col flex-1 bg-background text-foreground">
+      <body
+        className="h-svh flex flex-col flex-1 bg-background text-foreground"
+        // Pass nonce as data attribute so client components can access it if needed
+        data-nonce={nonce}
+      >
         <main className="flex-1 flex flex-col">{children}</main>
       </body>
     </html>
