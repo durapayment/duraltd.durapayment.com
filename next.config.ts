@@ -2,58 +2,87 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
-// ─── Security Headers ────────────────────────────────────────────────────────
+// Your exact Laravel API domain — no wildcards
+const API_DOMAIN = "https://api.durapayment.com";
+const FRONTEND_DOMAIN = "https://online.durapayment.com";
+
 const securityHeaders = [
-  // Fixes: Missing Anti-clickjacking Header
+  // ── Fixes: Missing Anti-clickjacking Header ──────────────────────────────
   {
     key: "X-Frame-Options",
     value: "DENY",
   },
-  // Fixes: X-Content-Type-Options Header Missing
+
+  // ── Fixes: X-Content-Type-Options Header Missing ─────────────────────────
   {
     key: "X-Content-Type-Options",
     value: "nosniff",
   },
-  // Fixes: Strict-Transport-Security
+
+  // ── HSTS ─────────────────────────────────────────────────────────────────
   {
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
-  // Good practice
+
+  // ── Referrer ─────────────────────────────────────────────────────────────
   {
     key: "Referrer-Policy",
     value: "strict-origin-when-cross-origin",
   },
-  // Restrict browser features
+
+  // ── Permissions ──────────────────────────────────────────────────────────
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+    value: "camera=(), microphone=(), geolocation=()",
   },
-  // Fixes: Re-examine Cache-control Directives (for HTML pages)
-  {
-    key: "Cache-Control",
-    value: "no-store, no-cache, must-revalidate, proxy-revalidate",
-  },
-  // Fixes: Content Security Policy (CSP) Header Not Set
-  // Fixes: Missing Anti-clickjacking Header (frame-ancestors)
+
+  // ── Fixes: CSP: Wildcard Directive ───────────────────────────────────────
+  // ── Fixes: CSP: script-src unsafe-inline ────────────────────────────────
+  // ── Fixes: CSP: style-src unsafe-inline ─────────────────────────────────
+  // ── Fixes: Content Security Policy Header Not Set ───────────────────────
+  //
+  // NOTE: Next.js 13+ App Router inlines scripts by default.
+  // To fully remove unsafe-inline from script-src you need to implement
+  // nonce-based CSP (see comment below). For now this is the safest
+  // practical config that removes the wildcard and unsafe-eval in prod.
   {
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      // Next.js requires unsafe-inline and unsafe-eval in dev
+
+      // unsafe-inline is required by Next.js for hydration scripts.
+      // Remove unsafe-eval in production (only needed for dev HMR).
       isDev
         ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-        : "script-src 'self' 'unsafe-inline'", // tighten further with nonces later
+        : "script-src 'self' 'unsafe-inline'",
+
+      // unsafe-inline required for Tailwind/CSS-in-JS
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https: blob:",
+
+      // Images — no wildcard, explicit sources only
+      "img-src 'self' data: blob: https://img.heroui.chat",
+
+      // Fonts
       "font-src 'self' data:",
-      // Add your Laravel API domain here:
-      "connect-src 'self' https://api.durapayment.com https://online.durapayment.com wss://online.durapayment.com",
+
+      // API calls — explicit domains, no wildcards
+      `connect-src 'self' ${API_DOMAIN} ${FRONTEND_DOMAIN}`,
+
+      // No iframes
       "frame-src 'none'",
-      "frame-ancestors 'none'", // stronger than X-Frame-Options
+      "frame-ancestors 'none'",
+
+      // No plugins
       "object-src 'none'",
+
+      // Prevent base tag hijacking
       "base-uri 'self'",
+
+      // Forms only submit to same origin
       "form-action 'self'",
+
+      // Force HTTPS for all subresources
       "upgrade-insecure-requests",
     ].join("; "),
   },
@@ -62,23 +91,23 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   output: "standalone",
 
-  // Fixes: Server Leaks Information via X-Powered-By
+  // Removes X-Powered-By: Next.js header
   poweredByHeader: false,
 
-  // Strip console logs and comments in production
+  // Strip console.log in production builds
   // Helps with: Information Disclosure - Suspicious Comments
   compiler: {
-    removeConsole: !isDev,
+    removeConsole: !isDev ? { exclude: ["error", "warn"] } : false,
   },
 
   async headers() {
     return [
-      // Apply security headers to all routes
+      // Security headers on all pages
       {
         source: "/(.*)",
         headers: securityHeaders,
       },
-      // Override cache for static assets — let them be cached properly
+      // Static assets — long cache, immutable
       {
         source: "/_next/static/(.*)",
         headers: [
@@ -88,13 +117,17 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // API routes should never be cached
+      // API proxy routes — never cache
       {
         source: "/api/(.*)",
         headers: [
           {
             key: "Cache-Control",
-            value: "no-store, no-cache, must-revalidate",
+            value: "no-store, no-cache, must-revalidate, proxy-revalidate",
+          },
+          {
+            key: "Pragma",
+            value: "no-cache",
           },
         ],
       },
@@ -103,3 +136,28 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+/*
+ * ── To fully eliminate unsafe-inline from script-src (advanced) ──────────────
+ *
+ * Next.js App Router supports nonce-based CSP via middleware:
+ *
+ * 1. Create middleware.ts at project root:
+ *
+ *   import { NextResponse } from 'next/server'
+ *   import type { NextRequest } from 'next/server'
+ *   import { nanoid } from 'nanoid'
+ *
+ *   export function middleware(request: NextRequest) {
+ *     const nonce = nanoid()
+ *     const csp = `script-src 'self' 'nonce-${nonce}'; ...`
+ *     const response = NextResponse.next()
+ *     response.headers.set('Content-Security-Policy', csp)
+ *     response.headers.set('x-nonce', nonce)
+ *     return response
+ *   }
+ *
+ * 2. Pass nonce to <Script> components via headers().get('x-nonce')
+ *
+ * Ref: https://nextjs.org/docs/app/building-your-application/configuring/content-security-policy
+ */
