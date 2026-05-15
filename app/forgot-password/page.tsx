@@ -322,8 +322,9 @@ export default function ForgotPasswordPage() {
                 <div className="flex flex-col mt-2 gap-5">
                   {/* Info text */}
                   <p className="text-[15px] text-black opacity-80">
-                    A 6-digit code was sent to <strong>{email}</strong>. Enter
-                    it below along with your new password.
+                    If an account with that <strong>{email}</strong> exists, a
+                    6-digit verification code has been sent. Please enter the
+                    code below along with your new password.
                   </p>
 
                   {/* OTP input */}
