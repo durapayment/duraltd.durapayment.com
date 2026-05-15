@@ -240,7 +240,7 @@ export default function ForgotPasswordPage() {
                 </p>
               </div>
               <Link
-                href="/login"
+                href="/"
                 className="mt-2 px-8 py-3 bg-secondary hover:bg-tertiary text-white text-sm font-semibold rounded-md transition-colors"
               >
                 Go to Login
@@ -292,7 +292,7 @@ export default function ForgotPasswordPage() {
             <p className="text-center text-sm">
               Remember your password?{" "}
               <Link
-                href="/login"
+                href="/"
                 className="text-secondary hover:text-tertiary font-medium"
               >
                 Sign in
