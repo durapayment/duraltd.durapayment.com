@@ -151,7 +151,7 @@ function TransferDetailModal({
             <Modal.Heading className="font-semibold text-[16px]">
               Transfer Details
             </Modal.Heading>
-            <Modal.CloseTrigger>
+            {/* <Modal.CloseTrigger>
               <span
                 role="presentation"
                 onClick={onClose}
@@ -159,7 +159,7 @@ function TransferDetailModal({
               >
                 <RiCloseLine size={20} />
               </span>
-            </Modal.CloseTrigger>
+            </Modal.CloseTrigger> */}
           </Modal.Header>
 
           <Modal.Body>
@@ -253,7 +253,7 @@ function BankPickerModal({
             <Modal.Heading className="font-semibold text-[16px]">
               Select Bank
             </Modal.Heading>
-            <Modal.CloseTrigger>
+            {/* <Modal.CloseTrigger>
               <span
                 onClick={onClose}
                 role="presentation"
@@ -261,7 +261,7 @@ function BankPickerModal({
               >
                 <RiCloseLine size={20} />
               </span>
-            </Modal.CloseTrigger>
+            </Modal.CloseTrigger> */}
           </Modal.Header>
 
           <Modal.Body>
