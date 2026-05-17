@@ -18,7 +18,14 @@ import {
   RiMoreFill,
   RiSearchLine,
 } from "react-icons/ri";
-import { Button, Modal, ProgressCircle, Table } from "@heroui/react";
+import {
+  Button,
+  Dropdown,
+  Label,
+  Modal,
+  ProgressCircle,
+  Table,
+} from "@heroui/react";
 import { authService, User } from "@/app/lib/auth";
 import { BusinessVerificationStatus } from "@/app/components/business_verification_status";
 import { HiOutlineHashtag } from "react-icons/hi";
@@ -255,6 +262,7 @@ function NewTransferModal({
         }
       } catch {
         /* non-critical */
+        // console.log("res");
       } finally {
         setBanksLoading(false);
       }
@@ -374,39 +382,52 @@ function NewTransferModal({
               </div>
 
               {/* Bank */}
+              {/* Bank */}
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
                   <RiBankLine size={12} /> Bank
                 </label>
-                <div
-                  className={`relative rounded-xl border ${errors.bank_code ? "border-red-300 bg-red-50" : "border-gray-200 bg-gray-50 focus-within:bg-white focus-within:border-gray-400"}`}
-                >
-                  <select
-                    value={form.bank_code}
-                    onChange={(e) => {
-                      setForm((f) => ({
-                        ...f,
-                        bank_code: e.target.value,
-                        account_name: "",
-                      }));
-                      setErrors((er) => ({ ...er, bank_code: "" }));
-                    }}
-                    className="w-full px-4 py-2.5 text-sm bg-transparent outline-none appearance-none cursor-pointer"
+                <Dropdown>
+                  <Button
+                    variant="secondary"
+                    className={`w-full justify-between rounded-xl border text-sm font-normal ${
+                      errors.bank_code
+                        ? "border-red-300 bg-red-50"
+                        : "border-gray-200 bg-gray-50"
+                    }`}
                   >
-                    <option value="">
-                      {banksLoading ? "Loading banks…" : "Select bank"}
-                    </option>
-                    {banks.map((b) => (
-                      <option key={b.code} value={b.code}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
-                  <RiArrowDownLine
-                    size={14}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                  />
-                </div>
+                    {banksLoading
+                      ? "Loading banks…"
+                      : (banks.find((b) => b.code === form.bank_code)?.name ??
+                        "Select bank")}
+                    <RiArrowDownLine size={14} className="text-gray-400" />
+                  </Button>
+                  <Dropdown.Popover className="max-h-60 overflow-y-auto w-[var(--trigger-width)]">
+                    <Dropdown.Menu
+                      selectionMode="single"
+                      selectedKeys={new Set([form.bank_code])}
+                      onSelectionChange={(keys) => {
+                        const val = Array.from(keys)[0] as string;
+                        setForm((f) => ({
+                          ...f,
+                          bank_code: val,
+                          account_name: "",
+                        }));
+                        setErrors((er) => ({ ...er, bank_code: "" }));
+                      }}
+                    >
+                      {banks.map((b) => (
+                        <Dropdown.Item
+                          key={b.name}
+                          id={b.code}
+                          textValue={b.name}
+                        >
+                          <Label>{b.name}</Label>
+                        </Dropdown.Item>
+                      ))}
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </Dropdown>
                 {errors.bank_code && (
                   <p className="text-xs text-red-500 mt-1">
                     {errors.bank_code}
@@ -730,7 +751,7 @@ export default function PaymentsPage() {
 
       const res = await fetch(`/api/payments/transfers?${params}`);
       if (res.status === 401) {
-        window.location.href = "/login";
+        window.location.href = "/";
         return;
       }
       if (!res.ok) throw new Error("Failed to load transfers");

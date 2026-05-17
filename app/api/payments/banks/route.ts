@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
           Accept: "application/json",
         },
         // Cache for 24h — bank list rarely changes
-        next: { revalidate: 86400 },
+        // next: { revalidate: 86400 },
       },
     );
 
