@@ -151,7 +151,15 @@ function TransferDetailModal({
             <Modal.Heading className="font-semibold text-[16px]">
               Transfer Details
             </Modal.Heading>
-            <Modal.CloseTrigger onClick={onClose} />
+            <Modal.CloseTrigger>
+              <span
+                role="presentation"
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <RiCloseLine size={20} />
+              </span>
+            </Modal.CloseTrigger>
           </Modal.Header>
 
           <Modal.Body>
@@ -217,6 +225,99 @@ function TransferDetailModal({
 }
 
 // ─────────────────────────────────────────────────────────
+// Bank Picker Modal
+// ─────────────────────────────────────────────────────────
+function BankPickerModal({
+  banks,
+  selected,
+  onSelect,
+  onClose,
+}: {
+  banks: Bank[];
+  selected: string;
+  onSelect: (code: string) => void;
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState("");
+
+  const filtered = banks.filter((b) =>
+    b.name.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  return (
+    <Modal isOpen>
+      <Modal.Backdrop />
+      <Modal.Container size="sm" placement="center">
+        <Modal.Dialog>
+          <Modal.Header>
+            <Modal.Heading className="font-semibold text-[16px]">
+              Select Bank
+            </Modal.Heading>
+            <Modal.CloseTrigger>
+              <span
+                onClick={onClose}
+                role="presentation"
+                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+              >
+                <RiCloseLine size={20} />
+              </span>
+            </Modal.CloseTrigger>
+          </Modal.Header>
+
+          <Modal.Body>
+            {/* Search */}
+            <div className="relative mb-3">
+              <RiSearchLine
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                size={15}
+              />
+              <input
+                type="text"
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search bank name…"
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:border-gray-400 focus:bg-white text-sm outline-none transition-all"
+              />
+            </div>
+
+            {/* Bank list */}
+            <div className="overflow-y-auto max-h-72 space-y-1">
+              {filtered.length === 0 ? (
+                <p className="text-center text-sm text-gray-400 py-8">
+                  No banks match "{search}"
+                </p>
+              ) : (
+                filtered.map((b) => (
+                  <button
+                    key={b.code}
+                    type="button"
+                    onClick={() => {
+                      onSelect(b.code);
+                      onClose();
+                    }}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-colors ${
+                      selected === b.code
+                        ? "bg-black text-white"
+                        : "hover:bg-gray-50 text-gray-800"
+                    }`}
+                  >
+                    <span>{b.name}</span>
+                    {selected === b.code && (
+                      <RiCheckLine size={16} className="shrink-0" />
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          </Modal.Body>
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
 // New Transfer Modal
 // ─────────────────────────────────────────────────────────
 function NewTransferModal({
@@ -234,6 +335,7 @@ function NewTransferModal({
   const [resolving, setResolving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [showBankPicker, setShowBankPicker] = useState(false);
 
   const [form, setForm] = useState<TransferForm>({
     bank_code: "",
@@ -382,52 +484,36 @@ function NewTransferModal({
               </div>
 
               {/* Bank */}
-              {/* Bank */}
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
                   <RiBankLine size={12} /> Bank
                 </label>
-                <Dropdown>
-                  <Button
-                    variant="secondary"
-                    className={`w-full justify-between rounded-xl border text-sm font-normal ${
-                      errors.bank_code
-                        ? "border-red-300 bg-red-50"
-                        : "border-gray-200 bg-gray-50"
-                    }`}
+                <button
+                  type="button"
+                  onClick={() => setShowBankPicker(true)}
+                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl border text-sm transition-all ${
+                    errors.bank_code
+                      ? "border-red-300 bg-red-50"
+                      : "border-gray-200 bg-gray-50 hover:border-gray-400 hover:bg-white"
+                  }`}
+                >
+                  <span
+                    className={
+                      banks.find((b) => b.code === form.bank_code)
+                        ? "text-gray-900"
+                        : "text-gray-400"
+                    }
                   >
                     {banksLoading
                       ? "Loading banks…"
                       : (banks.find((b) => b.code === form.bank_code)?.name ??
                         "Select bank")}
-                    <RiArrowDownLine size={14} className="text-gray-400" />
-                  </Button>
-                  <Dropdown.Popover className="max-h-60 overflow-y-auto w-[var(--trigger-width)]">
-                    <Dropdown.Menu
-                      selectionMode="single"
-                      selectedKeys={new Set([form.bank_code])}
-                      onSelectionChange={(keys) => {
-                        const val = Array.from(keys)[0] as string;
-                        setForm((f) => ({
-                          ...f,
-                          bank_code: val,
-                          account_name: "",
-                        }));
-                        setErrors((er) => ({ ...er, bank_code: "" }));
-                      }}
-                    >
-                      {banks.map((b) => (
-                        <Dropdown.Item
-                          key={b.name}
-                          id={b.code}
-                          textValue={b.name}
-                        >
-                          <Label>{b.name}</Label>
-                        </Dropdown.Item>
-                      ))}
-                    </Dropdown.Menu>
-                  </Dropdown.Popover>
-                </Dropdown>
+                  </span>
+                  <RiArrowDownLine
+                    size={14}
+                    className="text-gray-400 shrink-0"
+                  />
+                </button>
                 {errors.bank_code && (
                   <p className="text-xs text-red-500 mt-1">
                     {errors.bank_code}
@@ -575,6 +661,18 @@ function NewTransferModal({
                 Review Transfer
               </button>
             </div>
+
+            {showBankPicker && (
+              <BankPickerModal
+                banks={banks}
+                selected={form.bank_code}
+                onSelect={(code) => {
+                  setForm((f) => ({ ...f, bank_code: code, account_name: "" }));
+                  setErrors((er) => ({ ...er, bank_code: "" }));
+                }}
+                onClose={() => setShowBankPicker(false)}
+              />
+            )}
           </>
         )}
 

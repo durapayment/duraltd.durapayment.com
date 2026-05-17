@@ -92,47 +92,47 @@ const nextConfig: NextConfig = {
   output: "standalone",
 
   // Removes X-Powered-By: Next.js header
-  poweredByHeader: false,
+  // poweredByHeader: false,
 
   // Strip console.log in production builds
   // Helps with: Information Disclosure - Suspicious Comments
-  compiler: {
-    removeConsole: !isDev ? { exclude: ["error", "warn"] } : false,
-  },
+  // compiler: {
+  //   removeConsole: !isDev ? { exclude: ["error", "warn"] } : false,
+  // },
 
-  async headers() {
-    return [
-      // Security headers on all pages
-      {
-        source: "/(.*)",
-        headers: securityHeaders,
-      },
-      // Static assets — long cache, immutable
-      {
-        source: "/_next/static/(.*)",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
-          },
-        ],
-      },
-      // API proxy routes — never cache
-      {
-        source: "/api/(.*)",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "no-store, no-cache, must-revalidate, proxy-revalidate",
-          },
-          {
-            key: "Pragma",
-            value: "no-cache",
-          },
-        ],
-      },
-    ];
-  },
+  // async headers() {
+  //   return [
+  //     // Security headers on all pages
+  //     {
+  //       source: "/(.*)",
+  //       headers: securityHeaders,
+  //     },
+  //     // Static assets — long cache, immutable
+  //     {
+  //       source: "/_next/static/(.*)",
+  //       headers: [
+  //         {
+  //           key: "Cache-Control",
+  //           value: "public, max-age=31536000, immutable",
+  //         },
+  //       ],
+  //     },
+  //     // API proxy routes — never cache
+  //     {
+  //       source: "/api/(.*)",
+  //       headers: [
+  //         {
+  //           key: "Cache-Control",
+  //           value: "no-store, no-cache, must-revalidate, proxy-revalidate",
+  //         },
+  //         {
+  //           key: "Pragma",
+  //           value: "no-cache",
+  //         },
+  //       ],
+  //     },
+  //   ];
+  // },
 };
 
 export default nextConfig;
