@@ -18,14 +18,7 @@ import {
   RiMoreFill,
   RiSearchLine,
 } from "react-icons/ri";
-import {
-  Button,
-  Dropdown,
-  Label,
-  Modal,
-  ProgressCircle,
-  Table,
-} from "@heroui/react";
+import { Button, ProgressCircle, Table } from "@heroui/react";
 import { authService, User } from "@/app/lib/auth";
 import { BusinessVerificationStatus } from "@/app/components/business_verification_status";
 import { HiOutlineHashtag } from "react-icons/hi";
@@ -116,7 +109,10 @@ function TransferBadge({ status }: { status: TransferStatus }) {
       cls: "bg-blue-50 text-blue-700",
       icon: <RiTimeLine size={11} />,
     },
-    failed: { cls: "bg-red-50 text-red-700", icon: <RiAlertLine size={11} /> },
+    failed: {
+      cls: "bg-red-50 text-red-700",
+      icon: <RiAlertLine size={11} />,
+    },
   };
   const { cls, icon } = map[status] ?? {
     cls: "bg-gray-100 text-gray-600",
@@ -133,6 +129,37 @@ function TransferBadge({ status }: { status: TransferStatus }) {
 }
 
 // ─────────────────────────────────────────────────────────
+// Shared plain modal shell (portal-safe, no HeroUI)
+// ─────────────────────────────────────────────────────────
+function PlainModal({
+  onBackdropClick,
+  children,
+  size = "md",
+  zIndex = 50,
+}: {
+  onBackdropClick?: () => void;
+  children: React.ReactNode;
+  size?: "sm" | "md";
+  zIndex?: number;
+}) {
+  const maxW = size === "sm" ? "max-w-sm" : "max-w-md";
+  return (
+    <div
+      className={`fixed inset-0 bg-black/50 flex items-center justify-center p-4`}
+      style={{ zIndex }}
+      onClick={(e) => e.target === e.currentTarget && onBackdropClick?.()}
+    >
+      <div
+        className={`bg-white rounded-2xl w-full ${maxW} shadow-2xl overflow-hidden`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
 // Transfer Detail Modal
 // ─────────────────────────────────────────────────────────
 function TransferDetailModal({
@@ -143,89 +170,74 @@ function TransferDetailModal({
   onClose: () => void;
 }) {
   return (
-    <Modal isOpen>
-      <Modal.Backdrop />
-      <Modal.Container size="sm" placement="center">
-        <Modal.Dialog>
-          <Modal.Header>
-            <Modal.Heading className="font-semibold text-[16px]">
-              Transfer Details
-            </Modal.Heading>
-            {/* <Modal.CloseTrigger>
-              <span
-                role="presentation"
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <RiCloseLine size={20} />
-              </span>
-            </Modal.CloseTrigger> */}
-          </Modal.Header>
+    <PlainModal onBackdropClick={onClose} size="sm">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <h2 className="font-semibold text-[16px] text-gray-900">
+          Transfer Details
+        </h2>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <RiCloseLine size={20} />
+        </button>
+      </div>
 
-          <Modal.Body>
-            <div className="space-y-4 mt-1">
-              <div className="text-center py-4 bg-gray-50 rounded-2xl">
-                <p className="text-xs text-gray-500 mb-1">Amount Sent</p>
-                <p className="text-3xl font-bold text-gray-900">
-                  {fmt(t.amount, t.currency)}
-                </p>
-                {t.fee_amount > 0 && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Fee: {fmt(t.fee_amount, t.currency)}
-                  </p>
-                )}
-                <div className="mt-2 flex justify-center">
-                  <TransferBadge status={t.status} />
-                </div>
-              </div>
+      {/* Body */}
+      <div className="px-5 py-5 space-y-4">
+        <div className="text-center py-4 bg-gray-50 rounded-2xl">
+          <p className="text-xs text-gray-500 mb-1">Amount Sent</p>
+          <p className="text-3xl font-bold text-gray-900">
+            {fmt(t.amount, t.currency)}
+          </p>
+          {t.fee_amount > 0 && (
+            <p className="text-xs text-gray-400 mt-1">
+              Fee: {fmt(t.fee_amount, t.currency)}
+            </p>
+          )}
+          <div className="mt-2 flex justify-center">
+            <TransferBadge status={t.status} />
+          </div>
+        </div>
 
-              {[
-                { label: "Reference", value: t.reference, mono: true },
-                { label: "Bank", value: t.bank_name },
-                {
-                  label: "Account Number",
-                  value: t.account_number,
-                  mono: true,
-                },
-                { label: "Account Name", value: t.account_name },
-                ...(t.narration
-                  ? [{ label: "Narration", value: t.narration }]
-                  : []),
-                { label: "Initiated", value: fmtDate(t.created_at) },
-                ...(t.completed_at
-                  ? [{ label: "Completed", value: fmtDate(t.completed_at) }]
-                  : []),
-              ].map(({ label, value, mono }) => (
-                <div
-                  key={label}
-                  className="flex justify-between items-start gap-4"
-                >
-                  <span className="text-sm text-gray-500 shrink-0">
-                    {label}
-                  </span>
-                  <span
-                    className={`text-sm text-gray-900 text-right ${mono ? "font-mono text-xs" : ""}`}
-                  >
-                    {value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </Modal.Body>
+        {[
+          { label: "Reference", value: t.reference, mono: true },
+          { label: "Bank", value: t.bank_name },
+          { label: "Account Number", value: t.account_number, mono: true },
+          { label: "Account Name", value: t.account_name },
+          ...(t.narration ? [{ label: "Narration", value: t.narration }] : []),
+          { label: "Initiated", value: fmtDate(t.created_at) },
+          ...(t.completed_at
+            ? [{ label: "Completed", value: fmtDate(t.completed_at) }]
+            : []),
+        ].map(({ label, value, mono }) => (
+          <div key={label} className="flex justify-between items-start gap-4">
+            <span className="text-sm text-gray-500 shrink-0">{label}</span>
+            <span
+              className={`text-sm text-gray-900 text-right ${mono ? "font-mono text-xs" : ""}`}
+            >
+              {value}
+            </span>
+          </div>
+        ))}
+      </div>
 
-          <Modal.Footer className="mt-4">
-            <Button className="w-full rounded-xl py-5" onPress={onClose}>
-              Close
-            </Button>
-          </Modal.Footer>
-        </Modal.Dialog>
-      </Modal.Container>
-    </Modal>
+      {/* Footer */}
+      <div className="px-5 pb-5">
+        <button
+          onClick={onClose}
+          className="w-full py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-colors"
+        >
+          Close
+        </button>
+      </div>
+    </PlainModal>
   );
 }
 
 // ─────────────────────────────────────────────────────────
-// Bank Picker Modal
+// Bank Picker Modal — plain div-based, always visible
 // ─────────────────────────────────────────────────────────
 function BankPickerModal({
   banks,
@@ -245,75 +257,67 @@ function BankPickerModal({
   );
 
   return (
-    <Modal isOpen>
-      <Modal.Backdrop />
-      <Modal.Container size="sm" placement="center">
-        <Modal.Dialog>
-          <Modal.Header>
-            <Modal.Heading className="font-semibold text-[16px]">
-              Select Bank
-            </Modal.Heading>
-            {/* <Modal.CloseTrigger>
-              <span
-                onClick={onClose}
-                role="presentation"
-                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+    <PlainModal onBackdropClick={onClose} size="sm" zIndex={60}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <h2 className="font-semibold text-[16px] text-gray-900">Select Bank</h2>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <RiCloseLine size={20} />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="px-5 py-4">
+        {/* Search */}
+        <div className="relative mb-3">
+          <RiSearchLine
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            size={15}
+          />
+          <input
+            type="text"
+            autoFocus
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search bank name…"
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:border-gray-400 focus:bg-white text-sm outline-none transition-all"
+          />
+        </div>
+
+        {/* Bank list */}
+        <div className="overflow-y-auto max-h-72 space-y-1">
+          {filtered.length === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-8">
+              No banks match &ldquo;{search}&rdquo;
+            </p>
+          ) : (
+            filtered.map((b) => (
+              <button
+                key={b.code}
+                type="button"
+                onClick={() => {
+                  onSelect(b.code);
+                  onClose();
+                }}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-colors ${
+                  selected === b.code
+                    ? "bg-black text-white"
+                    : "hover:bg-gray-50 text-gray-800"
+                }`}
               >
-                <RiCloseLine size={20} />
-              </span>
-            </Modal.CloseTrigger> */}
-          </Modal.Header>
-
-          <Modal.Body>
-            {/* Search */}
-            <div className="relative mb-3">
-              <RiSearchLine
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                size={15}
-              />
-              <input
-                type="text"
-                autoFocus
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search bank name…"
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:border-gray-400 focus:bg-white text-sm outline-none transition-all"
-              />
-            </div>
-
-            {/* Bank list */}
-            <div className="overflow-y-auto max-h-72 space-y-1">
-              {filtered.length === 0 ? (
-                <p className="text-center text-sm text-gray-400 py-8">
-                  No banks match "{search}"
-                </p>
-              ) : (
-                filtered.map((b) => (
-                  <button
-                    key={b.code}
-                    type="button"
-                    onClick={() => {
-                      onSelect(b.code);
-                      onClose();
-                    }}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-colors ${
-                      selected === b.code
-                        ? "bg-black text-white"
-                        : "hover:bg-gray-50 text-gray-800"
-                    }`}
-                  >
-                    <span>{b.name}</span>
-                    {selected === b.code && (
-                      <RiCheckLine size={16} className="shrink-0" />
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
-          </Modal.Body>
-        </Modal.Dialog>
-      </Modal.Container>
-    </Modal>
+                <span>{b.name}</span>
+                {selected === b.code && (
+                  <RiCheckLine size={16} className="shrink-0" />
+                )}
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </PlainModal>
   );
 }
 
@@ -364,7 +368,6 @@ function NewTransferModal({
         }
       } catch {
         /* non-critical */
-        // console.log("res");
       } finally {
         setBanksLoading(false);
       }
@@ -449,11 +452,8 @@ function NewTransferModal({
   const selectedBank = banks.find((b) => b.code === form.bank_code);
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+    <>
+      <PlainModal onBackdropClick={onClose} size="md" zIndex={50}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
@@ -475,7 +475,7 @@ function NewTransferModal({
         {/* ── FORM ── */}
         {step === "form" && (
           <>
-            <div className="px-5 py-5 space-y-4">
+            <div className="px-5 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
                 <span className="text-xs text-gray-500">Available balance</span>
                 <span className="text-sm font-semibold text-gray-900">
@@ -498,16 +498,11 @@ function NewTransferModal({
                   }`}
                 >
                   <span
-                    className={
-                      banks.find((b) => b.code === form.bank_code)
-                        ? "text-gray-900"
-                        : "text-gray-400"
-                    }
+                    className={selectedBank ? "text-gray-900" : "text-gray-400"}
                   >
                     {banksLoading
                       ? "Loading banks…"
-                      : (banks.find((b) => b.code === form.bank_code)?.name ??
-                        "Select bank")}
+                      : (selectedBank?.name ?? "Select bank")}
                   </span>
                   <RiArrowDownLine
                     size={14}
@@ -563,7 +558,13 @@ function NewTransferModal({
                     placeholder={
                       resolving ? "Resolving…" : "Auto-filled after lookup"
                     }
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all ${errors.account_name ? "border-red-300 bg-red-50" : form.account_name ? "border-green-200 bg-green-50 text-green-800 font-medium" : "border-gray-200 bg-gray-100 text-gray-400"}`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all ${
+                      errors.account_name
+                        ? "border-red-300 bg-red-50"
+                        : form.account_name
+                          ? "border-green-200 bg-green-50 text-green-800 font-medium"
+                          : "border-gray-200 bg-gray-100 text-gray-400"
+                    }`}
                   />
                   {resolving && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -661,18 +662,6 @@ function NewTransferModal({
                 Review Transfer
               </button>
             </div>
-
-            {showBankPicker && (
-              <BankPickerModal
-                banks={banks}
-                selected={form.bank_code}
-                onSelect={(code) => {
-                  setForm((f) => ({ ...f, bank_code: code, account_name: "" }));
-                  setErrors((er) => ({ ...er, bank_code: "" }));
-                }}
-                onClose={() => setShowBankPicker(false)}
-              />
-            )}
           </>
         )}
 
@@ -780,8 +769,21 @@ function NewTransferModal({
             </button>
           </div>
         )}
-      </div>
-    </div>
+      </PlainModal>
+
+      {/* Bank picker rendered OUTSIDE the transfer modal so it sits on top */}
+      {showBankPicker && (
+        <BankPickerModal
+          banks={banks}
+          selected={form.bank_code}
+          onSelect={(code) => {
+            setForm((f) => ({ ...f, bank_code: code, account_name: "" }));
+            setErrors((er) => ({ ...er, bank_code: "" }));
+          }}
+          onClose={() => setShowBankPicker(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -953,7 +955,8 @@ export default function PaymentsPage() {
               Transfer History
             </h2>
             <p className="text-sm text-gray-500">
-              All outbound bank transfers{meta ? ` · ${meta.total} total` : ""}
+              All outbound bank transfers
+              {meta ? ` · ${meta.total} total` : ""}
             </p>
           </div>
 
@@ -978,7 +981,7 @@ export default function PaymentsPage() {
                   setStatusFilter(e.target.value);
                   setCurrentPage(1);
                 }}
-                className=" text-sm outline-none  focus:border-gray-400 cursor-pointer"
+                className="text-sm outline-none focus:border-gray-400 cursor-pointer"
               >
                 {[
                   { value: "all", label: "All Statuses" },
