@@ -458,14 +458,15 @@ function NewTransferModal({
     if (!validate()) return;
     setLoading(true);
     try {
-      // Calls your Laravel: POST /api/transactions/transfer/send-otp
-      // Generates + emails the 6-digit OTP to the authenticated user->email
       const res = await fetch("/api/request/otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
+
+      if (!res.ok) throw new Error("Failed to send OTP");
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to send OTP");
+
       setOtp(["", "", "", "", "", ""]);
       setOtpError(null);
       setStep("otp");

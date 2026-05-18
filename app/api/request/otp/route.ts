@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     }
 
     const response = await fetch(
-      `${process.env.LARAVEL_API_URL}/api/auth/request/otp`,
+      `${process.env.LARAVEL_API_URL}/api/auth/request/send-otp`,
       {
         method: "GET",
         headers: {
