@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState, useRef } from "react";
 import {
   RiAddLine,
@@ -382,7 +381,7 @@ function NewTransferModal({
       setErrors((e) => ({ ...e, account_name: "" }));
       try {
         const res = await fetch(
-          `/api/payments/resolve?account_number=${form.account_number}&bank_code=${form.bank_code}`,
+          `/api/payments/resolve-bank?account_number=${form.account_number}&bank_code=${form.bank_code}`,
         );
         const data = await res.json();
         if (res.ok && data.data?.account_name) {
@@ -849,11 +848,17 @@ export default function PaymentsPage() {
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (statusFilter !== "all") params.set("status", statusFilter);
 
-      const res = await fetch(`/api/payments/transfers?${params}`);
+      const res = await fetch(`/api/payments/transfers?${params}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      });
       if (res.status === 401) {
         window.location.href = "/";
         return;
       }
+
       if (!res.ok) throw new Error("Failed to load transfers");
 
       const json = await res.json();

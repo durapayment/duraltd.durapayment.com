@@ -7,7 +7,7 @@ import {
 
 const statusConfig = {
   unverified: {
-    Icon: RiShieldCrossLine,
+    Icon: <RiShieldCrossLine size={20} />,
     title: "Verification required",
     pill: "Not verified",
     desc: "Your business is unverified. Complete the verification process to unlock all features.",
@@ -18,7 +18,7 @@ const statusConfig = {
     btnClass: "text-yellow-800 border-yellow-200 hover:bg-yellow-50",
   },
   incomplete: {
-    Icon: RiShieldLine,
+    Icon: <RiShieldLine size={20} />,
     title: "Verification incomplete",
     pill: "Incomplete",
     desc: "Your verification request is missing information. Please provide the required details.",
@@ -29,7 +29,7 @@ const statusConfig = {
     btnClass: "text-amber-800 border-amber-200 hover:bg-amber-50",
   },
   under_review: {
-    Icon: RiShieldStarLine,
+    Icon: <RiShieldStarLine size={20} />,
     title: "Verification under review",
     pill: "Under review",
     desc: "Your submission is being reviewed. We'll notify you once it is complete.",
@@ -40,7 +40,7 @@ const statusConfig = {
     btnClass: "",
   },
   verified: {
-    Icon: RiShieldCheckLine,
+    Icon: <RiShieldCheckLine size={20} />,
     title: "Verification complete",
     pill: "Verified",
     desc: "Your business is verified. You have full access to all features.",
@@ -81,7 +81,7 @@ export const BusinessVerificationStatus = ({ status }: { status: Status }) => {
         <div
           className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${iconClass}`}
         >
-          <Icon size={20} />
+          {Icon}
         </div>
         <div>
           <p className={`text-md font-medium ${titleClass}`}>{title}</p>
