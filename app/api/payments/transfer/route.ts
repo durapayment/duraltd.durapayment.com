@@ -41,11 +41,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get CSRF cookie first
-    await fetch(`${process.env.LARAVEL_API_URL}/sanctum/csrf-cookie`, {
-      credentials: "include",
-    });
-
     // Forward registration to Laravel
     const response = await fetch(
       `${process.env.LARAVEL_API_URL}/api/transactions/transfer`,
@@ -56,7 +51,7 @@ export async function POST(request: NextRequest) {
           Authorization: `Bearer ${accessToken}`,
           Accept: "application/json",
         },
-        credentials: "include",
+        cache: "no-store",
         body: JSON.stringify(body),
       },
     );
