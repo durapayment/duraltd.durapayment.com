@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const bank_code = body.bank_code;
     const account_number = body.account_number;
     const account_name = body.account_name;
-    const amount = parseFloat(body.amount);
+    const amount = body.amount;
     const narration = body.narration || "Transfer";
 
     if (!bank_code || typeof bank_code !== "string") {
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    if (!amount || typeof amount !== "string") {
+    if (!amount) {
       return NextResponse.json(
         { status: 400, message: "Bad request" },
         { status: 400 },
