@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
+    const accessToken = request.cookies.get("access_token")?.value;
+    if (!accessToken) {
+      return NextResponse.json(
+        { status: 401, message: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
     const body = await request.json();
     const otp = body.otp;
 
@@ -24,9 +32,11 @@ export async function POST(request: NextRequest) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
           Accept: "application/json",
         },
         credentials: "include",
+        cache: "no-store",
         body: JSON.stringify(body),
       },
     );
