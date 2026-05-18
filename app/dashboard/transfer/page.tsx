@@ -567,7 +567,10 @@ function NewTransferModal({
     try {
       const res = await fetch("/api/payments/transfer", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify({
           bank_code: form.bank_code,
           account_number: form.account_number,
