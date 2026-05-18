@@ -460,7 +460,7 @@ function NewTransferModal({
     try {
       // Calls your Laravel: POST /api/transactions/transfer/send-otp
       // Generates + emails the 6-digit OTP to the authenticated user->email
-      const res = await fetch("/api/payments/transfer/send-otp", {
+      const res = await fetch("/api/request/otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
