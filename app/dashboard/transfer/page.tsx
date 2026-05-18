@@ -459,8 +459,11 @@ function NewTransferModal({
     setLoading(true);
     try {
       const res = await fetch("/api/request/otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
       });
 
       if (!res.ok) throw new Error("Failed to send OTP");
