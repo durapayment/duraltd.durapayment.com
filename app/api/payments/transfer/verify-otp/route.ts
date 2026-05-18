@@ -36,7 +36,6 @@ export async function POST(request: NextRequest) {
           Accept: "application/json",
         },
         credentials: "include",
-        cache: "no-store",
         body: JSON.stringify(body),
       },
     );

@@ -543,9 +543,6 @@ function NewTransferModal({
     setLoading(true);
     setOtpError(null);
     try {
-      // Calls your Laravel: POST /api/transactions/transfer/verify-otp
-      // Body: { otp: "123456" }
-      // Validates against cached value for user->user_id, invalidates on success
       const res = await fetch("/api/payments/transfer/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

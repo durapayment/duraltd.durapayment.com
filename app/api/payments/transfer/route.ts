@@ -10,11 +10,33 @@ export async function POST(request: NextRequest) {
       );
     }
     const body = await request.json();
-    const otp = body.otp;
+    const bank_code = body.bank_code;
+    const account_number = body.account_number;
+    const account_name = body.account_name;
+    const amount = parseFloat(body.amount);
+    const narration = body.narration || "Transfer";
 
-    if (!otp || typeof otp !== "string") {
+    if (!bank_code || typeof bank_code !== "string") {
       return NextResponse.json(
-        { status: 400, message: "Invalid otp" },
+        { status: 400, message: "Bad request" },
+        { status: 400 },
+      );
+    }
+    if (!account_number || typeof account_number !== "string") {
+      return NextResponse.json(
+        { status: 400, message: "Bad request" },
+        { status: 400 },
+      );
+    }
+    if (!account_name || typeof account_name !== "string") {
+      return NextResponse.json(
+        { status: 400, message: "Bad request" },
+        { status: 400 },
+      );
+    }
+    if (!amount || typeof amount !== "string") {
+      return NextResponse.json(
+        { status: 400, message: "Bad request" },
         { status: 400 },
       );
     }
@@ -35,7 +57,6 @@ export async function POST(request: NextRequest) {
           Accept: "application/json",
         },
         credentials: "include",
-        cache: "no-store",
         body: JSON.stringify(body),
       },
     );
