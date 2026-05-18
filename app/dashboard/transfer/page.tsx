@@ -339,7 +339,6 @@ function NewTransferModal({
   const [banksLoading, setBanksLoading] = useState(true);
   const [resolving, setResolving] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [otpSending, setOtpSending] = useState(false);
   const [otpResendCooldown, setOtpResendCooldown] = useState(0);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [otpError, setOtpError] = useState<string | null>(null);
@@ -418,6 +417,20 @@ function NewTransferModal({
     };
   }, []);
 
+  // ── Start 60s resend cooldown ─────────────────────────
+  const startCooldown = () => {
+    setOtpResendCooldown(60);
+    cooldownRef.current = setInterval(() => {
+      setOtpResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(cooldownRef.current!);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
   // ── Validate form ─────────────────────────────────────
   const validate = (): boolean => {
     const e: TransferFormErrors = {
@@ -440,59 +453,59 @@ function NewTransferModal({
     return Object.values(e).every((v) => !v);
   };
 
-  // ── Send OTP ──────────────────────────────────────────
-  const sendOtp = async () => {
-    setOtpSending(true);
-    setOtpError(null);
+  // ── Continue → send OTP then show OTP step ────────────
+  const proceedToOtp = async () => {
+    if (!validate()) return;
+    setLoading(true);
     try {
+      // Calls your Laravel: POST /api/transactions/transfer/send-otp
+      // Generates + emails the 6-digit OTP to the authenticated user->email
       const res = await fetch("/api/payments/transfer/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to send OTP");
-
-      // Start 60s resend cooldown
-      setOtpResendCooldown(60);
-      cooldownRef.current = setInterval(() => {
-        setOtpResendCooldown((prev) => {
-          if (prev <= 1) {
-            clearInterval(cooldownRef.current!);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      setOtp(["", "", "", "", "", ""]);
+      setOtpError(null);
+      setStep("otp");
+      startCooldown();
+      setTimeout(() => otpRefs.current[0]?.focus(), 100);
     } catch (err: unknown) {
-      setOtpError(
-        err instanceof Error ? err.message : "Could not send OTP. Try again.",
-      );
+      setErrors((e) => ({
+        ...e,
+        amount: err instanceof Error ? err.message : "Could not send OTP.",
+      }));
     } finally {
-      setOtpSending(false);
+      setLoading(false);
     }
   };
 
-  // ── Move to OTP step (send OTP automatically) ─────────
-  const proceedToOtp = async () => {
-    if (!validate()) return;
-    setStep("otp");
-    setOtp(["", "", "", "", "", ""]);
+  // ── Resend OTP ────────────────────────────────────────
+  const resendOtp = async () => {
     setOtpError(null);
-    await sendOtp();
-    // Focus first OTP input after render
-    setTimeout(() => otpRefs.current[0]?.focus(), 100);
+    try {
+      // Same Laravel endpoint: POST /api/transactions/transfer/send-otp
+      const res = await fetch("/api/payments/transfer/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to resend OTP");
+      startCooldown();
+    } catch (err: unknown) {
+      setOtpError(err instanceof Error ? err.message : "Could not resend OTP.");
+    }
   };
 
-  // ── OTP input handling ────────────────────────────────
+  // ── OTP input handlers ────────────────────────────────
   const handleOtpChange = (index: number, value: string) => {
     const digit = value.replace(/\D/g, "").slice(-1);
     const next = [...otp];
     next[index] = digit;
     setOtp(next);
     setOtpError(null);
-    if (digit && index < 5) {
-      otpRefs.current[index + 1]?.focus();
-    }
+    if (digit && index < 5) otpRefs.current[index + 1]?.focus();
   };
 
   const handleOtpKeyDown = (
@@ -516,7 +529,7 @@ function NewTransferModal({
     }
   };
 
-  // ── Verify OTP ────────────────────────────────────────
+  // ── Verify OTP → move to confirm ─────────────────────
   const verifyOtp = async () => {
     const code = otp.join("");
     if (code.length < 6) {
@@ -526,6 +539,9 @@ function NewTransferModal({
     setLoading(true);
     setOtpError(null);
     try {
+      // Calls your Laravel: POST /api/transactions/transfer/verify-otp
+      // Body: { otp: "123456" }
+      // Validates against cached value for user->user_id, invalidates on success
       const res = await fetch("/api/payments/transfer/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -776,10 +792,17 @@ function NewTransferModal({
               </button>
               <button
                 onClick={proceedToOtp}
-                disabled={!form.account_name || resolving}
-                className="flex-1 py-2.5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40"
+                disabled={!form.account_name || resolving || loading}
+                className="flex-1 py-2.5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
               >
-                Continue
+                {loading ? (
+                  <>
+                    <RiRefreshLine size={14} className="animate-spin" />
+                    Sending OTP…
+                  </>
+                ) : (
+                  "Continue"
+                )}
               </button>
             </div>
           </>
@@ -789,7 +812,7 @@ function NewTransferModal({
         {step === "otp" && (
           <>
             <div className="px-5 py-6 space-y-5">
-              {/* Summary pill */}
+              {/* Transfer summary */}
               <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between border border-gray-100">
                 <div>
                   <p className="text-xs text-gray-500">Sending to</p>
@@ -809,16 +832,13 @@ function NewTransferModal({
                 </div>
               </div>
 
-              {/* OTP instruction */}
+              {/* Instruction */}
               <div className="text-center space-y-1">
                 <p className="text-sm font-semibold text-gray-900">
                   Enter verification code
                 </p>
                 <p className="text-xs text-gray-500 leading-relaxed">
                   A 6-digit OTP has been sent to your registered email address.
-                  {otpSending && (
-                    <span className="text-gray-400"> Sending…</span>
-                  )}
                 </p>
               </div>
 
@@ -863,11 +883,10 @@ function NewTransferModal({
                   </p>
                 ) : (
                   <button
-                    onClick={sendOtp}
-                    disabled={otpSending}
-                    className="text-xs text-gray-600 underline underline-offset-2 hover:text-gray-900 transition-colors disabled:opacity-40"
+                    onClick={resendOtp}
+                    className="text-xs text-gray-600 underline underline-offset-2 hover:text-gray-900 transition-colors"
                   >
-                    {otpSending ? "Sending…" : "Resend code"}
+                    Resend code
                   </button>
                 )}
               </div>
@@ -1022,7 +1041,6 @@ function NewTransferModal({
     </>
   );
 }
-
 // ─────────────────────────────────────────────────────────
 // Main Page
 // ─────────────────────────────────────────────────────────
