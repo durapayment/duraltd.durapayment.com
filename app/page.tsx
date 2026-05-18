@@ -234,7 +234,11 @@ export default function LoginPage() {
 
         {/* Submit */}
         <div className="flex max-w-154 px-0 md:px-10 w-full flex-col md:mb-0 md:mt-3 gap-2">
-          <Button title="Login" action={handleSubmit} isLoading={isLoading} />
+          <Button
+            title="Login"
+            action={() => handleSubmit()}
+            isLoading={isLoading}
+          />
           <p className="text-center text-sm">
             Don't have an account?{" "}
             <a

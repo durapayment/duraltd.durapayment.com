@@ -332,13 +332,21 @@ function NewTransferModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [step, setStep] = useState<"form" | "confirm" | "success">("form");
+  const [step, setStep] = useState<"form" | "otp" | "confirm" | "success">(
+    "form",
+  );
   const [banks, setBanks] = useState<Bank[]>([]);
   const [banksLoading, setBanksLoading] = useState(true);
   const [resolving, setResolving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpResendCooldown, setOtpResendCooldown] = useState(0);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otpError, setOtpError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [showBankPicker, setShowBankPicker] = useState(false);
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [form, setForm] = useState<TransferForm>({
     bank_code: "",
@@ -357,6 +365,7 @@ function NewTransferModal({
 
   const resolveDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Load banks ────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -373,6 +382,7 @@ function NewTransferModal({
     })();
   }, []);
 
+  // ── Auto-resolve account name ─────────────────────────
   useEffect(() => {
     if (form.account_number.length !== 10 || !form.bank_code) return;
     if (resolveDebounce.current) clearTimeout(resolveDebounce.current);
@@ -401,6 +411,14 @@ function NewTransferModal({
     }, 600);
   }, [form.account_number, form.bank_code]);
 
+  // ── Cooldown timer cleanup ────────────────────────────
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, []);
+
+  // ── Validate form ─────────────────────────────────────
   const validate = (): boolean => {
     const e: TransferFormErrors = {
       bank_code: form.bank_code ? "" : "Select a bank",
@@ -422,6 +440,110 @@ function NewTransferModal({
     return Object.values(e).every((v) => !v);
   };
 
+  // ── Send OTP ──────────────────────────────────────────
+  const sendOtp = async () => {
+    setOtpSending(true);
+    setOtpError(null);
+    try {
+      const res = await fetch("/api/payments/transfer/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to send OTP");
+
+      // Start 60s resend cooldown
+      setOtpResendCooldown(60);
+      cooldownRef.current = setInterval(() => {
+        setOtpResendCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(cooldownRef.current!);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err: unknown) {
+      setOtpError(
+        err instanceof Error ? err.message : "Could not send OTP. Try again.",
+      );
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  // ── Move to OTP step (send OTP automatically) ─────────
+  const proceedToOtp = async () => {
+    if (!validate()) return;
+    setStep("otp");
+    setOtp(["", "", "", "", "", ""]);
+    setOtpError(null);
+    await sendOtp();
+    // Focus first OTP input after render
+    setTimeout(() => otpRefs.current[0]?.focus(), 100);
+  };
+
+  // ── OTP input handling ────────────────────────────────
+  const handleOtpChange = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, "").slice(-1);
+    const next = [...otp];
+    next[index] = digit;
+    setOtp(next);
+    setOtpError(null);
+    if (digit && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
+    if (pasted.length === 6) {
+      setOtp(pasted.split(""));
+      otpRefs.current[5]?.focus();
+    }
+  };
+
+  // ── Verify OTP ────────────────────────────────────────
+  const verifyOtp = async () => {
+    const code = otp.join("");
+    if (code.length < 6) {
+      setOtpError("Please enter the full 6-digit OTP.");
+      return;
+    }
+    setLoading(true);
+    setOtpError(null);
+    try {
+      const res = await fetch("/api/payments/transfer/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otp: code }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Invalid OTP");
+      setStep("confirm");
+    } catch (err: unknown) {
+      setOtpError(
+        err instanceof Error ? err.message : "OTP verification failed.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Submit transfer ───────────────────────────────────
   const handleSubmit = async () => {
     setLoading(true);
     setApiError(null);
@@ -449,11 +571,12 @@ function NewTransferModal({
   };
 
   const selectedBank = banks.find((b) => b.code === form.bank_code);
+  const otpFilled = otp.every((d) => d !== "");
 
   return (
     <>
       <PlainModal onBackdropClick={onClose} size="md" zIndex={50}>
-        {/* Header */}
+        {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-black flex items-center justify-center">
@@ -652,13 +775,128 @@ function NewTransferModal({
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  if (validate()) setStep("confirm");
-                }}
+                onClick={proceedToOtp}
                 disabled={!form.account_name || resolving}
                 className="flex-1 py-2.5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40"
               >
-                Review Transfer
+                Continue
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── OTP ── */}
+        {step === "otp" && (
+          <>
+            <div className="px-5 py-6 space-y-5">
+              {/* Summary pill */}
+              <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between border border-gray-100">
+                <div>
+                  <p className="text-xs text-gray-500">Sending to</p>
+                  <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                    {form.account_name}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {selectedBank?.name} ·{" "}
+                    <span className="font-mono">{form.account_number}</span>
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">Amount</p>
+                  <p className="text-sm font-bold text-gray-900 mt-0.5">
+                    {fmt(parseFloat(form.amount || "0"))}
+                  </p>
+                </div>
+              </div>
+
+              {/* OTP instruction */}
+              <div className="text-center space-y-1">
+                <p className="text-sm font-semibold text-gray-900">
+                  Enter verification code
+                </p>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  A 6-digit OTP has been sent to your registered email address.
+                  {otpSending && (
+                    <span className="text-gray-400"> Sending…</span>
+                  )}
+                </p>
+              </div>
+
+              {/* OTP boxes */}
+              <div className="flex gap-2 justify-center">
+                {otp.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => {
+                      otpRefs.current[i] = el;
+                    }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(i, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                    onPaste={i === 0 ? handleOtpPaste : undefined}
+                    className={`w-11 h-12 text-center text-lg font-bold rounded-xl border outline-none transition-all ${
+                      otpError
+                        ? "border-red-300 bg-red-50 text-red-700"
+                        : digit
+                          ? "border-gray-900 bg-gray-900 text-white"
+                          : "border-gray-200 bg-gray-50 focus:border-gray-400 focus:bg-white text-gray-900"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {otpError && (
+                <p className="text-xs text-red-500 text-center">{otpError}</p>
+              )}
+
+              {/* Resend */}
+              <div className="text-center">
+                {otpResendCooldown > 0 ? (
+                  <p className="text-xs text-gray-400">
+                    Resend code in{" "}
+                    <span className="font-semibold text-gray-600">
+                      {otpResendCooldown}s
+                    </span>
+                  </p>
+                ) : (
+                  <button
+                    onClick={sendOtp}
+                    disabled={otpSending}
+                    className="text-xs text-gray-600 underline underline-offset-2 hover:text-gray-900 transition-colors disabled:opacity-40"
+                  >
+                    {otpSending ? "Sending…" : "Resend code"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="px-5 pb-5 flex gap-2">
+              <button
+                onClick={() => {
+                  setStep("form");
+                  setOtp(["", "", "", "", "", ""]);
+                  setOtpError(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onClick={verifyOtp}
+                disabled={!otpFilled || loading}
+                className="flex-1 py-2.5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <RiRefreshLine size={14} className="animate-spin" />
+                    Verifying…
+                  </>
+                ) : (
+                  "Verify & Continue"
+                )}
               </button>
             </div>
           </>
@@ -718,10 +956,10 @@ function NewTransferModal({
 
             <div className="px-5 pb-5 flex gap-2">
               <button
-                onClick={() => setStep("form")}
+                onClick={() => setStep("otp")}
                 className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
               >
-                Edit
+                Back
               </button>
               <button
                 onClick={handleSubmit}
@@ -770,7 +1008,6 @@ function NewTransferModal({
         )}
       </PlainModal>
 
-      {/* Bank picker rendered OUTSIDE the transfer modal so it sits on top */}
       {showBankPicker && (
         <BankPickerModal
           banks={banks}
