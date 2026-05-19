@@ -21,7 +21,7 @@ function buildCSP(nonce: string): string {
     isDev
       ? `script-src 'self' 'nonce-${nonce}' 'unsafe-eval'`
       : `script-src 'self' 'nonce-${nonce}'`,
-    `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'`,
+    `style-src 'self' 'unsafe-inline'`,
     "img-src 'self' data: blob: https://img.heroui.chat",
     "font-src 'self' data:",
     `connect-src 'self' ${API_DOMAIN} ${FRONTEND_DOMAIN}`,
