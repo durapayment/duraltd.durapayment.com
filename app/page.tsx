@@ -205,7 +205,7 @@ export default function LoginPage() {
           Accept: "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({ otp: code }),
+        body: JSON.stringify({ otp: code, email: formData.email }),
       });
 
       const result = await response.json();
