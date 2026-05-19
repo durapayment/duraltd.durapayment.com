@@ -47,6 +47,10 @@ const nextConfig: NextConfig = {
   // Remove X-Powered-By: Next.js fingerprint
   poweredByHeader: false,
 
+  // Disable source maps in production — prevents source code
+  // from being readable in browser DevTools
+  productionBrowserSourceMaps: false,
+
   compiler: {
     // Strip all console.log/debug in production; keep error + warn
     removeConsole: !isDev ? { exclude: ["error", "warn"] } : false,
