@@ -17,7 +17,7 @@ export const TransactionTable = ({
       <Table.ScrollContainer>
         <Table.Content aria-label="Transactions">
           <Table.Header>
-            <Table.Column isRowHeader>Email</Table.Column>
+            <Table.Column isRowHeader>Details</Table.Column>
             <Table.Column>Amount</Table.Column>
             <Table.Column>Status</Table.Column>
             <Table.Column>Transaction ID</Table.Column>
