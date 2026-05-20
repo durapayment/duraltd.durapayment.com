@@ -260,7 +260,7 @@ export default function WebhooksAndCallbacks() {
 
   // ── JSX ───────────────────────────────────────
   return (
-    <section className="pt-5 sm:pt-14 pb-5 sm:pb-8 max-w-5xl mx-auto">
+    <section className="pt-5 sm:pt-10 pb-5 sm:pb-8 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-[24px] md:text-[28px] font-[600]">

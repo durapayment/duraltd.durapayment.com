@@ -31,6 +31,7 @@ interface SettingsData {
   business_type: string | null;
   business_industry: string | null;
   bvn: string | null;
+  website: string | null;
   nin_image_path: string | null;
   cac_certificate_path: string | null;
   status_report_path: string | null;
@@ -181,6 +182,7 @@ export default function Settings() {
     business_type: "",
     business_industry: "",
     bvn: "",
+    website: "",
   });
   const [selectedFiles, setSelectedFiles] = useState<
     Record<DocKey, File | null>
@@ -222,6 +224,7 @@ export default function Settings() {
           business_type: data.business_type ?? "",
           business_industry: data.business_industry ?? "",
           bvn: data.bvn ?? "",
+          website: data.website ?? "",
         });
         setPreferencesForm({
           receive_email_notifications: data.receive_email_notifications,
@@ -323,6 +326,8 @@ export default function Settings() {
       if (complianceForm.business_industry)
         formData.append("business_industry", complianceForm.business_industry);
       if (complianceForm.bvn) formData.append("bvn", complianceForm.bvn);
+      if (complianceForm.website.trim())
+        formData.append("website", complianceForm.website.trim());
 
       (Object.entries(selectedFiles) as [DocKey, File | null][]).forEach(
         ([key, file]) => {
@@ -528,7 +533,7 @@ export default function Settings() {
 
   // ── JSX ───────────────────────────────────────
   return (
-    <section className="max-w-5xl mx-auto pt-5 sm:pt-14 pb-5 sm:pb-8">
+    <section className="max-w-5xl mx-auto pt-5 sm:pt-10 pb-5 sm:pb-8">
       <div className="mb-5 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
           Account Settings
@@ -567,11 +572,7 @@ export default function Settings() {
         </div>
       )}
 
-      {/* ── Tabs ──
-        FIX: removed `min-w-max` which forced the container wider than the viewport.
-        Now uses `w-full` + `overflow-x-auto` with proper scrollbar hiding.
-        Tab labels always visible; icon + label kept together with `shrink-0`.
-      */}
+      {/* ── Tabs ── */}
       <div
         className="w-full overflow-x-auto border-b border-border mb-5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         role="tablist"
@@ -591,8 +592,6 @@ export default function Settings() {
               aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={clsx(
-                // FIX: flex-1 so tabs share space evenly and never overflow;
-                // removed `first:pl-0` which clipped the border-b indicator.
                 "flex-1 flex items-center justify-center gap-1.5 pb-3 sm:pb-4",
                 "px-1 sm:px-3",
                 "border-b-2 transition-all text-xs sm:text-sm font-medium",
@@ -602,7 +601,6 @@ export default function Settings() {
               )}
             >
               <tab.icon size={16} className="shrink-0" />
-              {/* FIX: always show label; use `truncate` instead of hiding on small screens */}
               <span className="truncate hidden sm:inline">{tab.label}</span>
               {tab.id === "compliance" &&
                 settings.verification_status !== "verified" && (
@@ -639,8 +637,6 @@ export default function Settings() {
                 <label className="block text-[11px] uppercase tracking-wider opacity-75 mb-1">
                   {label}
                 </label>
-                {/* FIX: `break-all` → `break-words overflow-hidden` to handle long emails
-                    without breaking every single character unnecessarily */}
                 <p
                   className={clsx(
                     "font-medium text-sm sm:text-[15px] break-words overflow-hidden",
@@ -696,7 +692,6 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* FIX: `w-full sm:w-auto` already present; added `min-w-0` to prevent overflow */}
           <button
             onClick={handleSaveContact}
             disabled={savingSection === "contact"}
@@ -713,7 +708,7 @@ export default function Settings() {
       {/* ── Compliance Tab ── */}
       {activeTab === "compliance" && (
         <div className="bg-background rounded-2xl sm:rounded-3xl border border-border p-4 sm:p-8 w-full overflow-hidden">
-          {/* Header: stack vertically on mobile so the badge never pushes content wide */}
+          {/* Header */}
           <div className="flex flex-col min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between gap-2 mb-2">
             <h2 className="text-lg sm:text-xl font-semibold">
               Business Verification (KYC)
@@ -789,65 +784,92 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <div className="w-full min-w-0">
-                  <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
-                    Industry
-                  </label>
-                  <div
-                    className={clsx(
-                      "px-4 py-2.5 border rounded-2xl w-full",
-                      validationErrors.has("Industry")
-                        ? "border-red-400 bg-red-50"
-                        : "border-border",
-                    )}
-                  >
-                    <select
-                      value={complianceForm.business_industry}
-                      onChange={(e) =>
-                        setComplianceForm((f) => ({
-                          ...f,
-                          business_industry: e.target.value,
-                        }))
-                      }
-                      className="w-full focus:border-gray-400 outline-none text-sm bg-transparent"
+                <div className="flex items-start bg-red-300 w-full justify-between ">
+                  <div className="w-full min-w-0">
+                    <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
+                      Industry
+                    </label>
+                    <div
+                      className={clsx(
+                        "px-4 py-2.5 border rounded-2xl w-full",
+                        validationErrors.has("Industry")
+                          ? "border-red-400 bg-red-50"
+                          : "border-border",
+                      )}
                     >
-                      <option value="">Select industry</option>
-                      {BUSINESS_INDUSTRIES.map((ind) => (
-                        <option key={ind} value={ind}>
-                          {ind}
-                        </option>
-                      ))}
-                    </select>
+                      <select
+                        value={complianceForm.business_industry}
+                        onChange={(e) =>
+                          setComplianceForm((f) => ({
+                            ...f,
+                            business_industry: e.target.value,
+                          }))
+                        }
+                        className="w-full focus:border-gray-400 outline-none text-sm bg-transparent"
+                      >
+                        <option value="">Select industry</option>
+                        {BUSINESS_INDUSTRIES.map((ind) => (
+                          <option key={ind} value={ind}>
+                            {ind}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* BVN spans full width */}
+                  <div className="col-span-1 sm:col-span-2 w-full min-w-0">
+                    <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
+                      BVN (Bank Verification Number)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={complianceForm.bvn}
+                      onChange={(e) => {
+                        const val = e.target.value
+                          .replace(/\D/g, "")
+                          .slice(0, 11);
+                        setComplianceForm((f) => ({ ...f, bvn: val }));
+                      }}
+                      className={clsx(
+                        "w-full px-4 py-2.5 border rounded-2xl focus:border-gray-400 outline-none text-sm font-mono tracking-wider",
+                        validationErrors.has("BVN (must be 11 digits)")
+                          ? "border-red-400 bg-red-50"
+                          : "border-border",
+                      )}
+                      placeholder="11-digit BVN"
+                      maxLength={11}
+                    />
+                    <p className="text-[11px] opacity-75 mt-1">
+                      Required for live virtual account generation. Must be 11
+                      digits.
+                    </p>
                   </div>
                 </div>
 
-                {/* BVN spans full width on both mobile and desktop */}
+                {/* Website — optional, spans full width */}
                 <div className="col-span-1 sm:col-span-2 w-full min-w-0">
                   <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
-                    BVN (Bank Verification Number)
+                    Website{" "}
+                    <span className="normal-case font-normal opacity-60">
+                      (optional)
+                    </span>
                   </label>
                   <input
-                    type="text"
-                    inputMode="numeric"
-                    value={complianceForm.bvn}
-                    onChange={(e) => {
-                      const val = e.target.value
-                        .replace(/\D/g, "")
-                        .slice(0, 11);
-                      setComplianceForm((f) => ({ ...f, bvn: val }));
-                    }}
-                    className={clsx(
-                      "w-full px-4 py-2.5 border rounded-2xl focus:border-gray-400 outline-none text-sm font-mono tracking-wider",
-                      validationErrors.has("BVN (must be 11 digits)")
-                        ? "border-red-400 bg-red-50"
-                        : "border-border",
-                    )}
-                    placeholder="11-digit BVN"
-                    maxLength={11}
+                    type="url"
+                    value={complianceForm.website}
+                    onChange={(e) =>
+                      setComplianceForm((f) => ({
+                        ...f,
+                        website: e.target.value,
+                      }))
+                    }
+                    className="w-full px-4 py-2.5 border border-border rounded-2xl focus:border-gray-400 outline-none text-sm"
+                    placeholder="https://yourbusiness.com"
                   />
                   <p className="text-[11px] opacity-75 mt-1">
-                    Required for live virtual account generation. Must be 11
-                    digits.
+                    Your business website, if available.
                   </p>
                 </div>
               </div>
@@ -971,10 +993,6 @@ export default function Settings() {
                         {sub}
                       </p>
                     </div>
-                    {/* FIX: toggle — moved `relative` to the outer wrapper div so the
-                        absolutely-positioned knob is correctly contained. Previously
-                        `relative` was only on the hidden <input>, causing the knob to
-                        escape its container on mobile. */}
                     <div
                       className="relative shrink-0 w-11 h-6 cursor-pointer"
                       onClick={() =>
@@ -1014,39 +1032,6 @@ export default function Settings() {
                 ))}
               </div>
             </div>
-
-            {/* Appearance */}
-            {/* <div>
-              <h3 className="font-semibold mb-2 flex items-center gap-2 text-sm sm:text-[15px]">
-                <Palette size={16} /> Appearance
-              </h3>
-              <p className="text-[12px] opacity-75 mb-3 sm:mb-4">
-                Preference is saved locally to your browser
-              </p>
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                {(["light", "dark", "system"] as Theme[]).map((theme) => (
-                  <button
-                    key={theme}
-                    onClick={() => {
-                      setPreferencesForm((prev) => ({ ...prev, theme }));
-                      applyTheme(theme);
-                    }}
-                    className={clsx(
-                      "py-2.5 sm:py-3 rounded-2xl border text-xs sm:text-sm font-medium transition-all",
-                      preferencesForm.theme === theme
-                        ? "border-accent bg-accent/10 text-accent"
-                        : "border-border hover:border-gray-400 text-gray-600",
-                    )}
-                  >
-                    {theme === "light"
-                      ? "Light"
-                      : theme === "dark"
-                        ? "Dark"
-                        : "System"}
-                  </button>
-                ))}
-              </div>
-            </div> */}
           </div>
 
           <button
