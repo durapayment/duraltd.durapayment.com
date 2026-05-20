@@ -722,9 +722,9 @@ export default function Settings() {
             platform features.
           </p>
 
-          <div className="space-y-8 sm:space-y-10">
+          <div className="space-y-8 w-full sm:space-y-10">
             {/* Business Info */}
-            <div>
+            <div className="flex flex-col gap-7">
               <h3 className="font-semibold mb-4 text-sm sm:text-[15px]">
                 Business Information
               </h3>
@@ -783,95 +783,91 @@ export default function Settings() {
                     </select>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex items-start bg-red-300 w-full justify-between ">
-                  <div className="w-full min-w-0">
-                    <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
-                      Industry
-                    </label>
-                    <div
-                      className={clsx(
-                        "px-4 py-2.5 border rounded-2xl w-full",
-                        validationErrors.has("Industry")
-                          ? "border-red-400 bg-red-50"
-                          : "border-border",
-                      )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 w-full">
+                <div className="w-full min-w-0">
+                  <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
+                    Industry
+                  </label>
+                  <div
+                    className={clsx(
+                      "px-4 py-2.5 border rounded-2xl w-full",
+                      validationErrors.has("Industry")
+                        ? "border-red-400 bg-red-50"
+                        : "border-border",
+                    )}
+                  >
+                    <select
+                      value={complianceForm.business_industry}
+                      onChange={(e) =>
+                        setComplianceForm((f) => ({
+                          ...f,
+                          business_industry: e.target.value,
+                        }))
+                      }
+                      className="w-full focus:border-gray-400 outline-none text-sm bg-transparent"
                     >
-                      <select
-                        value={complianceForm.business_industry}
-                        onChange={(e) =>
-                          setComplianceForm((f) => ({
-                            ...f,
-                            business_industry: e.target.value,
-                          }))
-                        }
-                        className="w-full focus:border-gray-400 outline-none text-sm bg-transparent"
-                      >
-                        <option value="">Select industry</option>
-                        {BUSINESS_INDUSTRIES.map((ind) => (
-                          <option key={ind} value={ind}>
-                            {ind}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* BVN spans full width */}
-                  <div className="col-span-1 sm:col-span-2 w-full min-w-0">
-                    <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
-                      BVN (Bank Verification Number)
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={complianceForm.bvn}
-                      onChange={(e) => {
-                        const val = e.target.value
-                          .replace(/\D/g, "")
-                          .slice(0, 11);
-                        setComplianceForm((f) => ({ ...f, bvn: val }));
-                      }}
-                      className={clsx(
-                        "w-full px-4 py-2.5 border rounded-2xl focus:border-gray-400 outline-none text-sm font-mono tracking-wider",
-                        validationErrors.has("BVN (must be 11 digits)")
-                          ? "border-red-400 bg-red-50"
-                          : "border-border",
-                      )}
-                      placeholder="11-digit BVN"
-                      maxLength={11}
-                    />
-                    <p className="text-[11px] opacity-75 mt-1">
-                      Required for live virtual account generation. Must be 11
-                      digits.
-                    </p>
+                      <option value="">Select industry</option>
+                      {BUSINESS_INDUSTRIES.map((ind) => (
+                        <option key={ind} value={ind}>
+                          {ind}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
-                {/* Website — optional, spans full width */}
-                <div className="col-span-1 sm:col-span-2 w-full min-w-0">
+                {/* BVN spans full width */}
+                <div className="w-full min-w-0">
                   <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
-                    Website{" "}
-                    <span className="normal-case font-normal opacity-60">
-                      (optional)
-                    </span>
+                    BVN
                   </label>
                   <input
-                    type="url"
-                    value={complianceForm.website}
-                    onChange={(e) =>
-                      setComplianceForm((f) => ({
-                        ...f,
-                        website: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-2.5 border border-border rounded-2xl focus:border-gray-400 outline-none text-sm"
-                    placeholder="https://yourbusiness.com"
+                    type="text"
+                    inputMode="numeric"
+                    value={complianceForm.bvn}
+                    onChange={(e) => {
+                      const val = e.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 11);
+                      setComplianceForm((f) => ({ ...f, bvn: val }));
+                    }}
+                    className={clsx(
+                      "w-full px-4 py-2.5 border rounded-2xl focus:border-gray-400 outline-none text-sm font-mono tracking-wider",
+                      validationErrors.has("BVN (must be 11 digits)")
+                        ? "border-red-400 bg-red-50"
+                        : "border-border",
+                    )}
+                    placeholder="11-digit BVN"
+                    maxLength={11}
                   />
-                  <p className="text-[11px] opacity-75 mt-1">
-                    Your business website, if available.
-                  </p>
                 </div>
+              </div>
+
+              {/* Website — optional, spans full width */}
+              <div className="col-span-1 sm:col-span-2 w-full min-w-0">
+                <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
+                  Website{" "}
+                  <span className="normal-case font-normal opacity-60">
+                    (optional)
+                  </span>
+                </label>
+                <input
+                  type="url"
+                  value={complianceForm.website}
+                  onChange={(e) =>
+                    setComplianceForm((f) => ({
+                      ...f,
+                      website: e.target.value,
+                    }))
+                  }
+                  className="w-full lg:w-[50%] px-4 py-2.5 border border-border rounded-2xl focus:border-gray-400 outline-none text-sm"
+                  placeholder="https://yourbusiness.com"
+                />
+                <p className="text-[11px] opacity-75 mt-1">
+                  Your business website, if available.
+                </p>
               </div>
             </div>
 
