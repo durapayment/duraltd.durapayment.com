@@ -71,6 +71,17 @@ export default function DashboardPage() {
         {business?.verification_status !== "verified" && (
           <BusinessVerificationStatus status={business?.verification_status} />
         )}
+
+        <div className="mb-8">
+          <h1 className="text-[26px] md:text-[30px] font-bold text-gray-900 tracking-tight">
+            Payments Dashboard
+          </h1>
+          <p className="text-[14px] text-gray-500 mt-1">
+            Monitor your transactions, manage payments, and access key insights
+            to grow your business.
+          </p>
+        </div>
+
         {/* Transaction Date */}
         {/* <div className="flex w-full items-center justify-between">
           <div className="flex mt-4 w-max items-center gap-3">

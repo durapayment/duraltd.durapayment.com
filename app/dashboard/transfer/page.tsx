@@ -1155,7 +1155,7 @@ export default function PaymentsPage() {
   }
 
   return (
-    <div className="w-full flex h-full flex-col items-center pt-5 sm:pt-14 pb-5 sm:pb-8">
+    <div className="w-full flex h-full flex-col items-center pt-5 sm:pt-10 pb-5 sm:pb-8">
       <div className="max-w-310 flex flex-col gap-6 flex-1 w-full">
         {business?.verification_status !== "verified" && (
           <BusinessVerificationStatus status={business?.verification_status} />
