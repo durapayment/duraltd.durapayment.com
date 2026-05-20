@@ -297,9 +297,11 @@ export default function CustomersPage() {
       <div className="max-w-310 flex flex-col gap-6 flex-1 w-full">
         {/* Header */}
         <div className="flex flex-col md:flex-row gap-4 md:gap-0 justify-between items-start md:items-center mt-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
-            <p className="text-gray-500 text-sm mt-1">
+          <div className="">
+            <h1 className="text-[26px] md:text-[30px] font-bold text-gray-900 tracking-tight">
+              Customers
+            </h1>
+            <p className="text-[14px] text-gray-500 mt-1">
               Manage all your payment customers
             </p>
           </div>

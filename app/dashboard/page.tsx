@@ -72,13 +72,12 @@ export default function DashboardPage() {
           <BusinessVerificationStatus status={business?.verification_status} />
         )}
 
-        <div className="mb-8">
+        <div className="mb-5">
           <h1 className="text-[26px] md:text-[30px] font-bold text-gray-900 tracking-tight">
             Payments Dashboard
           </h1>
           <p className="text-[14px] text-gray-500 mt-1">
-            Monitor your transactions, manage payments, and access key insights
-            to grow your business.
+            Monitor your transactions and access insights to grow your business.
           </p>
         </div>
 

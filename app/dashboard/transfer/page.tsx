@@ -1163,9 +1163,11 @@ export default function PaymentsPage() {
 
         {/* ── Header ── */}
         <div className="flex flex-col md:flex-row gap-3 md:gap-0 items-start md:items-center justify-between mt-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Transfer</h1>
-            <p className="text-gray-500 text-sm mt-1">
+          <div className="">
+            <h1 className="text-[26px] md:text-[30px] font-bold text-gray-900 tracking-tight">
+              Transfer
+            </h1>
+            <p className="text-[14px] text-gray-500 mt-1">
               Send money to any Nigerian bank account
             </p>
           </div>

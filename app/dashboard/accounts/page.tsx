@@ -462,9 +462,11 @@ export default function AccountsPage() {
         )}
         {/* Header */}
         <div className="flex gap-3 md:gap-0 flex-col md:flex-row items-start md:items-center justify-between mt-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Accounts</h1>
-            <p className="text-gray-500 text-sm mt-1">
+          <div className="">
+            <h1 className="text-[26px] md:text-[30px] font-bold text-gray-900 tracking-tight">
+              Accounts
+            </h1>
+            <p className="text-[14px] text-gray-500 mt-1">
               Main corporate account and customer sub accounts
             </p>
           </div>

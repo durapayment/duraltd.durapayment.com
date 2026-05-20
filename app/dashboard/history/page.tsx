@@ -541,11 +541,11 @@ export default function HistoryPage() {
         )} */}
         {/* Header */}
         <div className="flex flex-col md:flex-row gap-4 md:gap-0 justify-between items-start md:items-center mt-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">
+          <div className="">
+            <h1 className="text-[26px] md:text-[30px] font-bold text-gray-900 tracking-tight">
               Transaction History
             </h1>
-            <p className="text-gray-500 text-sm mt-1">
+            <p className="text-[14px] text-gray-500 mt-1">
               All transactions across main and sub accounts
             </p>
           </div>
