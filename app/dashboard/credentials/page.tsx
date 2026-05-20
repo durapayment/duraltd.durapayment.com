@@ -872,7 +872,7 @@ export default function ApiKeys() {
 
   if (fetchError) {
     return (
-      <div className="max-w-310 mx-auto px-4 py-8">
+      <div className="max-w-310 mx-auto pt-5 sm:pt-14 pb-5 sm:pb-8">
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
           <p className="text-sm text-red-600 mb-3">{fetchError}</p>
           <button

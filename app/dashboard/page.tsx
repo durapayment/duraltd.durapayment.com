@@ -65,35 +65,8 @@ export default function DashboardPage() {
     );
   }
 
-  const transactions = [
-    {
-      email: "kate@acme.com",
-      amount: "₦100,000",
-      status: "Completed",
-      transactionId: "738scb38cvva",
-    },
-    {
-      email: "john@acme.com",
-      amount: "₦150,000",
-      status: "Completed",
-      transactionId: "928ndf49dkks",
-    },
-    {
-      email: "sara@acme.com",
-      amount: "₦200,000",
-      status: "Failed",
-      transactionId: "384kdj92klls",
-    },
-    {
-      email: "michael@acme.com",
-      amount: "₦250,000",
-      status: "Pending",
-      transactionId: "567lkm89pqr",
-    },
-  ];
-
   return (
-    <div className="w-full flex h-full flex-col items-center">
+    <div className="w-full flex h-full flex-col items-center pt-5 sm:pt-14 pb-5 sm:pb-8">
       <div className="max-w-310 flex flex-col gap-4 flex-1 w-full">
         {business?.verification_status !== "verified" && (
           <BusinessVerificationStatus status={business?.verification_status} />

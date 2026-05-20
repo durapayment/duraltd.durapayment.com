@@ -216,7 +216,7 @@ export default function ActivityLogsPage() {
   const totalPages = meta?.last_page ?? 1;
 
   return (
-    <div className="w-full flex h-full flex-col items-center">
+    <div className="w-full flex h-full flex-col items-center pt-5 sm:pt-14 pb-5 sm:pb-8">
       <div className="max-w-310 flex flex-col gap-6 flex-1 w-full">
         {/* Header */}
         <div className="flex flex-col md:flex-row gap-4 md:gap-0 justify-between items-start md:items-center mt-4">

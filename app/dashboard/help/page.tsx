@@ -168,7 +168,7 @@ export default function HelpSupport() {
 
   // ── Page ───────────────────────────────────────
   return (
-    <section className="max-w-5xl mx-auto px-3 sm:px-4 pt-5 sm:pt-16 pb-5 sm:pb-8">
+    <section className="max-w-5xl mx-auto px-3 sm:px-4 pt-5 sm:pt-14 pb-5 sm:pb-8">
       {/* ── Header ── */}
       <div className="mb-8 sm:mb-10">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">

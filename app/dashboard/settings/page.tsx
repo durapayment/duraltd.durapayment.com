@@ -528,7 +528,7 @@ export default function Settings() {
 
   // ── JSX ───────────────────────────────────────
   return (
-    <section className="max-w-5xl mx-auto py-5 sm:py-8">
+    <section className="max-w-5xl mx-auto pt-5 sm:pt-14 pb-5 sm:pb-8">
       <div className="mb-5 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
           Account Settings
