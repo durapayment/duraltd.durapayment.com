@@ -347,12 +347,14 @@ export default function LoginPage() {
                   {errors.password}
                 </p>
               )}
-              <Link
-                href="/forgot-password"
-                className="text-[13px] mt-1 text-end font-medium"
-              >
-                Forgot password?
-              </Link>
+              <div className="text-end">
+                <Link
+                  href="/forgot-password"
+                  className="text-[13px] mt-1 text-end font-medium"
+                >
+                  Forgot password?
+                </Link>
+              </div>
             </div>
           </div>
 

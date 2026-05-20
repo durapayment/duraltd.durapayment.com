@@ -106,11 +106,6 @@ const DOC_FIELDS: {
 //   localStorage.setItem(THEME_KEY, theme);
 // }
 
-function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "system";
-  return (localStorage.getItem(THEME_KEY) as Theme) ?? "system";
-}
-
 function VerificationBadge({ status }: { status: string }) {
   const config: Record<string, { cls: string; label: string }> = {
     verified: {
@@ -200,7 +195,6 @@ export default function Settings() {
   const [preferencesForm, setPreferencesForm] = useState({
     receive_email_notifications: true,
     receive_sms_notifications: true,
-    theme: "system" as Theme,
   });
 
   // useEffect(() => {
@@ -232,7 +226,6 @@ export default function Settings() {
         setPreferencesForm({
           receive_email_notifications: data.receive_email_notifications,
           receive_sms_notifications: data.receive_sms_notifications,
-          theme: getStoredTheme(),
         });
 
         const params = new URLSearchParams(window.location.search);
