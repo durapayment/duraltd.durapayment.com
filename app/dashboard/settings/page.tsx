@@ -217,6 +217,8 @@ export default function Settings() {
         const json: any = await res.json();
         const data: SettingsData = json.data;
 
+        console.log(data);
+
         setSettings(data);
         setContactForm({ alternative_email: data.alternative_email ?? "" });
         setComplianceForm({
