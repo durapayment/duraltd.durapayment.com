@@ -76,6 +76,7 @@ export function ComplianceWizard() {
     business_industry: "",
     registration_number: "",
     bvn: "",
+    date_of_birth: "",
     website: "",
     business_address: "",
     business_city: "",
@@ -95,6 +96,7 @@ export function ComplianceWizard() {
         business_industry: d.business_industry ?? "",
         registration_number: d.registration_number ?? "",
         bvn: d.bvn ?? "",
+        date_of_birth: d.date_of_birth ?? "",
         website: d.website ?? "",
         business_address: d.business_address ?? "",
         business_city: d.business_city ?? "",
@@ -515,6 +517,42 @@ export function ComplianceWizard() {
                   {11 - infoForm.bvn.length} more digits needed
                 </p>
               )}
+            </div>
+
+            {/* Date of Birth */}
+            <div>
+              <label className="block text-[12px] font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
+                Date of Birth *
+              </label>
+              <input
+                type="date"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-gray-400 outline-none text-sm"
+                value={infoForm.date_of_birth}
+                max={new Date().toISOString().split("T")[0]}
+                onChange={(e) =>
+                  setInfoForm((f) => ({ ...f, date_of_birth: e.target.value }))
+                }
+              />
+              {/* Advisory */}
+              <p className="text-[11px] text-amber-600 mt-1.5 flex items-start gap-1.5">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width={11}
+                  height={11}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="shrink-0 mt-0.5"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                Must match the date of birth on your BVN record
+              </p>
             </div>
 
             {/* Website */}
