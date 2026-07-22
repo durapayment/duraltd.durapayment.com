@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,7 +42,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Forward registration to Laravel
+    // ── Idempotency Key ────────────────────────────────────
+    const idempotencyKey = randomUUID();
+
+    // Forward to Laravel
     const response = await fetch(
       `${process.env.LARAVEL_API_URL}/api/transactions/transfer`,
       {
@@ -50,6 +54,7 @@ export async function POST(request: NextRequest) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
           Accept: "application/json",
+          "Idempotency-Key": idempotencyKey,
         },
         cache: "no-store",
         body: JSON.stringify(body),
@@ -58,19 +63,21 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
 
-    // ✅ Extract cookie from Laravel response
     const setCookieHeader = response.headers.get("set-cookie");
 
     const nextResponse = NextResponse.json(data, { status: response.status });
 
-    // ✅ Forward the cookie to the client
     if (setCookieHeader) {
       nextResponse.headers.set("set-cookie", setCookieHeader);
     }
 
+    // ── Forward idempotency key back to client ─────────────
+    // So client can track which key was used
+    nextResponse.headers.set("Idempotency-Key", idempotencyKey);
+
     return nextResponse;
   } catch (error) {
-    console.error("Registration error:", error);
+    console.error("Transfer error:", error);
     return NextResponse.json(
       { status: 500, message: "Internal server error" },
       { status: 500 },

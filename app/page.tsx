@@ -8,6 +8,7 @@ import {
   RiShieldCheckLine,
   RiArrowLeftLine,
 } from "react-icons/ri";
+import { CBNBadge } from "./components/cbnbadge";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -167,7 +168,6 @@ export default function LoginPage() {
   const handleResendOtp = async () => {
     setOtpError(null);
     try {
-      // Re-trigger login to resend the 2FA code
       const response = await fetch("/api/login", {
         method: "POST",
         headers: {
@@ -214,7 +214,6 @@ export default function LoginPage() {
         throw new Error(result.message || "Invalid code. Please try again.");
       }
 
-      // 2FA verified — go to dashboard
       router.push("/dashboard");
     } catch (err: unknown) {
       setOtpError(err instanceof Error ? err.message : "Verification failed.");
@@ -243,7 +242,6 @@ export default function LoginPage() {
             Create account
           </Link>
         </div>
-
         <div className="flex mt-0 md:mt-10 flex-1 flex-col justify-between md:justify-start items-center">
           <div className="max-w-154 w-full flex flex-col gap-8 px-0 md:px-10 py-10">
             <div className="flex flex-col gap-1">
@@ -365,8 +363,8 @@ export default function LoginPage() {
               action={() => handleLoginSubmit()}
               isLoading={isLoading}
             />
-            <p className="text-center text-sm">
-              Don't have an account?{" "}
+            <p className="text-center flex items-center gap-2 justify-center text-sm">
+              Don't have an account?
               <a
                 href="/register"
                 className="text-secondary hover:text-tertiary font-medium"
@@ -374,6 +372,7 @@ export default function LoginPage() {
                 Create account
               </a>
             </p>
+            <CBNBadge />
           </div>
         </div>
       </div>
@@ -399,7 +398,7 @@ export default function LoginPage() {
         <div className="max-w-154 w-full flex flex-col gap-8 px-0 md:px-10 py-10">
           {/* Icon + heading */}
           <div className="flex flex-col items-center gap-3 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-gray-900 flex items-center justify-center">
+            <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center">
               <RiShieldCheckLine size={26} className="text-white" />
             </div>
             <div className="flex flex-col gap-1">
@@ -436,7 +435,7 @@ export default function LoginPage() {
                     otpError
                       ? "border-red-300 bg-red-50 text-red-700"
                       : digit
-                        ? "border-gray-900 bg-gray-900 text-white"
+                        ? "border-gray-900 text-gray-900"
                         : "border-neutral-300 bg-white focus:border-gray-600 text-gray-900"
                   }`}
                 />
@@ -460,7 +459,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={handleResendOtp}
-                  className="text-xs text-gray-600 underline underline-offset-2 hover:text-gray-900 transition-colors"
+                  className="text-xs text-gray-600 cursor-pointer underline underline-offset-2 hover:text-gray-900 transition-colors"
                 >
                   Resend code
                 </button>
@@ -474,7 +473,7 @@ export default function LoginPage() {
           <button
             onClick={handleVerify2FA}
             disabled={!otpFilled || otpLoading}
-            className="w-full py-3.5 rounded-lg bg-black text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-lg cursor-pointer bg-accent text-white text-sm font-semibold hover:bg-tertiary disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
           >
             {otpLoading ? (
               <>
@@ -493,11 +492,13 @@ export default function LoginPage() {
               setOtp(["", "", "", "", "", ""]);
               setOtpError(null);
             }}
-            className="w-full py-3 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
+            className="w-full py-3 cursor-pointer rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
           >
             <RiArrowLeftLine size={14} />
             Back to login
           </button>
+
+          <CBNBadge />
         </div>
       </div>
     </div>

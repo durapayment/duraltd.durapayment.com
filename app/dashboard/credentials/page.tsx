@@ -20,6 +20,8 @@ import clsx from "clsx";
 import { Tabs, ProgressCircle } from "@heroui/react";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
+import { BusinessVerificationStatus } from "@/app/components/business_verification_status";
+import { authService } from "@/app/lib/auth";
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -694,6 +696,32 @@ export default function ApiKeys() {
   const [modalError, setModalError] = useState<string | null>(null);
 
   const [newKeyBanner, setNewKeyBanner] = useState<NewKeyBanner | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const [business, setBusiness] = useState<any>(null);
+
+  const [userLoading, setUserLoading] = useState(true);
+
+  const fetchUser = async () => {
+    try {
+      const { isAuthenticated, user, business, summary } =
+        await authService.checkAuth();
+
+      if (isAuthenticated && user) {
+        setBusiness(business);
+        console.log(summary?.recent_customers);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user:", error);
+    } finally {
+      setLoading(false);
+      setUserLoading(false); // ← add this
+    }
+  };
+
+  useEffect(() => {
+    fetchUser();
+  }, []);
 
   const [snack, setSnack] = useState<{
     msg: string;
@@ -888,8 +916,11 @@ export default function ApiKeys() {
 
   return (
     <section className="max-w-310 mx-auto px-4 py-8">
+      {!userLoading && business?.verification_status !== "verified" && (
+        <BusinessVerificationStatus status={business?.verification_status} />
+      )}
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-8 mt-8">
         <h1 className="text-[26px] md:text-[30px] font-bold text-gray-900 tracking-tight">
           API Keys
         </h1>

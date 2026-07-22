@@ -22,6 +22,7 @@ import { IoMdClose } from "react-icons/io";
 import { HiEye, HiEyeOff } from "react-icons/hi";
 import { useRouter } from "next/navigation";
 import { FaRocket } from "react-icons/fa";
+import { CBNBadge } from "../components/cbnbadge";
 
 type AccountType = "individual" | "business" | "";
 
@@ -251,7 +252,7 @@ function Step2({ accountType, step1Data, onBack }: Step2Props) {
 
       {success && (
         <div className="rounded-md bg-green-50 border border-green-300 px-4 py-3 text-sm text-green-800">
-          🎉 Account created successfully! Redirecting you to your dashboard...
+          Account created successfully! Redirecting you to your dashboard...
         </div>
       )}
 
@@ -1082,22 +1083,25 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div className="flex flex-col mt-4 gap-4">
-              <Button
-                title="Let's get started"
-                action={handleStep1Submit}
-                isLoading={isLoading}
-                disabled={isLoading}
-              />
-              <p className="text-center text-sm">
-                Already have an account?{" "}
-                <a
-                  href="/"
-                  className="text-secondary hover:text-tertiary font-medium"
-                >
-                  Login here
-                </a>
-              </p>
+            <div>
+              <div className="flex flex-col mt-4 gap-4">
+                <Button
+                  title="Let's get started"
+                  action={handleStep1Submit}
+                  isLoading={isLoading}
+                  disabled={isLoading}
+                />
+                <p className="text-center text-sm">
+                  Already have an account?{" "}
+                  <a
+                    href="/"
+                    className="text-secondary hover:text-tertiary font-medium"
+                  >
+                    Login here
+                  </a>
+                </p>
+              </div>
+              <CBNBadge />
             </div>
           </div>
         ) : (

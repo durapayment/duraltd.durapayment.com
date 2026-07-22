@@ -20,6 +20,8 @@ import clsx from "clsx";
 import { Button, Spinner } from "@heroui/react";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
+import { authService, User } from "@/app/lib/auth";
+import { BusinessVerificationStatus } from "@/app/components/business_verification_status";
 
 // ────────────────────────────────────────────────
 // Types
@@ -62,10 +64,37 @@ export default function WebhooksAndCallbacks() {
   const [secret, setSecret] = useState<string | null>(null);
   const [showSecret, setShowSecret] = useState(false);
   const [regeneratingSecret, setRegeneratingSecret] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // ── Test Delivery ─────────────────────────────
   const [sendingTest, setSendingTest] = useState(false);
   const [lastDelivery, setLastDelivery] = useState<DeliveryState | null>(null);
+
+  const [user, setUser] = useState<User | null>(null);
+  const [business, setBusiness] = useState<any>(null);
+  const [userLoading, setUserLoading] = useState(true);
+
+  const fetchUser = async () => {
+    try {
+      const { isAuthenticated, user, business, summary } =
+        await authService.checkAuth();
+
+      if (isAuthenticated && user) {
+        setUser(user);
+        setBusiness(business);
+        console.log(summary?.recent_customers);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user:", error);
+    } finally {
+      setLoading(false);
+      setUserLoading(false); // ← add this
+    }
+  };
+
+  useEffect(() => {
+    fetchUser();
+  }, []);
 
   // ── Load business data on mount ───────────────
   useEffect(() => {
@@ -261,9 +290,12 @@ export default function WebhooksAndCallbacks() {
   // ── JSX ───────────────────────────────────────
   return (
     <section className="pt-5 sm:pt-10 pb-5 sm:pb-8 max-w-5xl mx-auto">
+      {!userLoading && business?.verification_status !== "verified" && (
+        <BusinessVerificationStatus status={business?.verification_status} />
+      )}
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-[24px] md:text-[28px] font-[600]">
+      <div className="mb-8 mt-8">
+        <h1 className="text-[24px] md:text-[28px] font-semibold">
           Webhooks & Callbacks
         </h1>
         <p className="text-gray-600 mt-1">

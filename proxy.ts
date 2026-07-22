@@ -16,6 +16,10 @@ function buildCSP(nonce: string): string {
   const API_DOMAIN = "https://api.durapayment.com";
   const FRONTEND_DOMAIN = "https://online.durapayment.com";
 
+  const connectSrc = isDev
+    ? `connect-src 'self' ${API_DOMAIN} ${FRONTEND_DOMAIN} http://localhost:8000 http://127.0.0.1:8000`
+    : `connect-src 'self' ${API_DOMAIN} ${FRONTEND_DOMAIN}`;
+
   return [
     "default-src 'self'",
     isDev
@@ -24,7 +28,7 @@ function buildCSP(nonce: string): string {
     `style-src 'self' 'unsafe-inline'`,
     "img-src 'self' data: blob: https://img.heroui.chat",
     "font-src 'self' data:",
-    `connect-src 'self' ${API_DOMAIN} ${FRONTEND_DOMAIN}`,
+    connectSrc,
     "frame-src 'none'",
     "frame-ancestors 'none'",
     "object-src 'none'",

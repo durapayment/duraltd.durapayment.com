@@ -489,13 +489,17 @@ function NewTransferModal({
   const resendOtp = async () => {
     setOtpError(null);
     try {
-      // Same Laravel endpoint: POST /api/transactions/transfer/send-otp
-      const res = await fetch("/api/payments/transfer/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch("/api/request/otp", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
       });
+
+      if (!res.ok) throw new Error("Failed to send OTP");
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to resend OTP");
+
       startCooldown();
     } catch (err: unknown) {
       setOtpError(err instanceof Error ? err.message : "Could not resend OTP.");
@@ -599,7 +603,7 @@ function NewTransferModal({
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-black flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">
               <RiArrowUpLine size={14} className="text-white" />
             </div>
             <h2 className="font-semibold text-gray-900">
@@ -797,7 +801,7 @@ function NewTransferModal({
               <button
                 onClick={proceedToOtp}
                 disabled={!form.account_name || resolving || loading}
-                className="flex-1 py-2.5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-xl bg-accent cursor-pointer text-white text-sm font-semibold hover:bg-tertiary transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -865,7 +869,7 @@ function NewTransferModal({
                       otpError
                         ? "border-red-300 bg-red-50 text-red-700"
                         : digit
-                          ? "border-gray-900 bg-gray-900 text-white"
+                          ? "border-gray-900 text-black"
                           : "border-gray-200 bg-gray-50 focus:border-gray-400 focus:bg-white text-gray-900"
                     }`}
                   />
@@ -910,7 +914,7 @@ function NewTransferModal({
               <button
                 onClick={verifyOtp}
                 disabled={!otpFilled || loading}
-                className="flex-1 py-2.5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-xl bg-accent cursor-pointer text-white text-sm font-semibold hover:bg-tertiary disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -980,14 +984,14 @@ function NewTransferModal({
             <div className="px-5 pb-5 flex gap-2">
               <button
                 onClick={() => setStep("otp")}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                className="flex-1 py-2.5 rounded-xl border cursor-pointer border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
               >
                 Back
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="flex-1 py-2.5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-tertiary cursor-pointer disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>

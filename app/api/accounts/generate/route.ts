@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -12,6 +13,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    // ── Idempotency Key ────────────────────────────────────
+    const idempotencyKey = randomUUID();
+
     const response = await fetch(
       `${process.env.LARAVEL_API_URL}/api/generate-static-account`,
       {
@@ -20,6 +24,7 @@ export async function POST(request: NextRequest) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
           Accept: "application/json",
+          "Idempotency-Key": idempotencyKey,
         },
         body: JSON.stringify(body),
         cache: "no-store",

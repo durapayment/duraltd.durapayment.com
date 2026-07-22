@@ -6,19 +6,27 @@ import {
   Mail,
   Shield,
   Bell,
-  Palette,
   Upload,
   FileText,
   AlertCircle,
   Loader2,
   CheckCircle,
   ExternalLink,
+  Info,
 } from "lucide-react";
 import clsx from "clsx";
+import { ComplianceWizard } from "@/app/components/compliance/ComplianceWizard";
 
 // ─────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────
+interface DocumentInfo {
+  label: string;
+  path: string | null;
+  uploaded: boolean;
+  required: boolean;
+}
+
 interface SettingsData {
   business_id: string;
   verification_status: string;
@@ -37,6 +45,13 @@ interface SettingsData {
   status_report_path: string | null;
   memorandum_path: string | null;
   board_resolution_path: string | null;
+  documents: {
+    nin: DocumentInfo;
+    cac_certificate: DocumentInfo;
+    status_report: DocumentInfo;
+    memorandum: DocumentInfo;
+    board_resolution: DocumentInfo;
+  };
   receive_email_notifications: boolean;
   receive_sms_notifications: boolean;
 }
@@ -47,10 +62,17 @@ type DocKey =
   | "status_report"
   | "memorandum"
   | "board_resolution";
-type Tab = "profile" | "contact" | "compliance" | "preferences";
-type Theme = "light" | "dark" | "system";
 
-const BUSINESS_TYPES = ["individual", "corporate"];
+type Tab = "profile" | "contact" | "compliance" | "preferences";
+
+// ─────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────
+const BUSINESS_TYPES = [
+  { value: "individual", label: "Individual" },
+  { value: "business_name", label: "Business Name (BN / Sole Proprietor)" },
+  { value: "limited_liability", label: "Limited Liability Company (RC)" },
+];
 
 const BUSINESS_INDUSTRIES = [
   "Fintech",
@@ -66,77 +88,72 @@ const BUSINESS_INDUSTRIES = [
   "Other",
 ];
 
-const THEME_KEY = "dura_theme_preference";
-
-const DOC_FIELDS: {
+// All possible documents
+const ALL_DOCS: {
   key: DocKey;
   label: string;
   serverKey: keyof SettingsData;
+  hint: string;
 }[] = [
   {
     key: "nin",
     label: "National Identity Number (NIN)",
     serverKey: "nin_image_path",
+    hint: "Upload a clear photo or scan of your NIN slip or National ID card.",
   },
   {
     key: "cac_certificate",
     label: "CAC Certificate",
     serverKey: "cac_certificate_path",
+    hint: "Certificate of Incorporation or Business Name registration from CAC.",
   },
   {
     key: "status_report",
     label: "Company Status Report",
     serverKey: "status_report_path",
+    hint: "Current CAC status report confirming active status and directors.",
   },
   {
     key: "memorandum",
     label: "Memorandum & Articles of Association",
     serverKey: "memorandum_path",
+    hint: "MEMART signed and certified by CAC.",
   },
   {
     key: "board_resolution",
     label: "Board Resolution",
     serverKey: "board_resolution_path",
+    hint: "Board resolution authorising account opening, signed by directors.",
   },
 ];
 
-// function applyTheme(theme: Theme) {
-//   const root = document.documentElement;
-//   root.classList.remove("light", "dark");
-//   if (theme !== "system") root.classList.add(theme);
-//   localStorage.setItem(THEME_KEY, theme);
-// }
+// Required docs per business type
+const REQUIRED_DOCS: Record<string, DocKey[]> = {
+  individual: ["nin"],
+  business_name: ["nin", "cac_certificate"],
+  limited_liability: [
+    "nin",
+    "cac_certificate",
+    "status_report",
+    "memorandum",
+    "board_resolution",
+  ],
+};
 
+// ─────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────
 function VerificationBadge({ status }: { status: string }) {
-  const config: Record<string, { cls: string; label: string }> = {
-    verified: {
-      cls: "bg-green-50 text-green-700 border-green-200",
-      label: "Verified",
-    },
-    under_review: {
-      cls: "bg-blue-50 text-blue-700 border-blue-200",
-      label: "Under Review",
-    },
-    incomplete: {
-      cls: "bg-amber-50 text-amber-700 border-amber-200",
-      label: "Incomplete",
-    },
-    pending: {
-      cls: "bg-amber-50 text-amber-700 border-amber-200",
-      label: "Pending",
-    },
-    rejected: {
-      cls: "bg-red-50 text-red-700 border-red-200",
-      label: "Rejected",
-    },
-    suspended: {
-      cls: "bg-red-50 text-red-700 border-red-200",
-      label: "Suspended",
-    },
+  const config: Record<string, { cls: string }> = {
+    verified: { cls: "bg-green-50 text-green-700 border-green-200" },
+    under_review: { cls: "bg-blue-50 text-blue-700 border-blue-200" },
+    incomplete: { cls: "bg-amber-50 text-amber-700 border-amber-200" },
+    pending: { cls: "bg-amber-50 text-amber-700 border-amber-200" },
+    rejected: { cls: "bg-red-50 text-red-700 border-red-200" },
+    suspended: { cls: "bg-red-50 text-red-700 border-red-200" },
   };
   const { cls } = config[status] ?? {
     cls: "bg-gray-100 text-gray-600 border-gray-200",
-    label: status,
   };
   return (
     <span
@@ -152,6 +169,34 @@ function VerificationBadge({ status }: { status: string }) {
   );
 }
 
+function DocStatusBadge({
+  uploaded,
+  required,
+}: {
+  uploaded: boolean;
+  required: boolean;
+}) {
+  if (uploaded) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+        <CheckCircle size={10} /> Uploaded
+      </span>
+    );
+  }
+  if (required) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
+        <AlertCircle size={10} /> Required
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full">
+      Optional
+    </span>
+  );
+}
+
 // ─────────────────────────────────────────────────────────
 // Main Page
 // ─────────────────────────────────────────────────────────
@@ -161,9 +206,6 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
   const [savingSection, setSavingSection] = useState<string | null>(null);
-  const [validationErrors, setValidationErrors] = useState<Set<string>>(
-    new Set(),
-  );
 
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
@@ -184,6 +226,7 @@ export default function Settings() {
     bvn: "",
     website: "",
   });
+
   const [selectedFiles, setSelectedFiles] = useState<
     Record<DocKey, File | null>
   >({
@@ -199,10 +242,7 @@ export default function Settings() {
     receive_sms_notifications: true,
   });
 
-  // useEffect(() => {
-  //   applyTheme(getStoredTheme());
-  // }, []);
-
+  // ── Load settings ──────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -212,12 +252,9 @@ export default function Settings() {
           return;
         }
         if (!res.ok) throw new Error("Failed to load settings");
-
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const json: any = await res.json();
         const data: SettingsData = json.data;
-
-        console.log(data);
 
         setSettings(data);
         setContactForm({ alternative_email: data.alternative_email ?? "" });
@@ -244,6 +281,34 @@ export default function Settings() {
     })();
   }, []);
 
+  // ── Derived: which docs to show based on selected business type ──
+  const selectedType =
+    complianceForm.business_type || settings?.business_type || "individual";
+  const requiredDocKeys: DocKey[] = REQUIRED_DOCS[selectedType] ?? ["nin"];
+
+  // All docs — required ones first, optional ones after
+  const visibleDocs = [
+    ...ALL_DOCS.filter((d) => requiredDocKeys.includes(d.key)),
+    ...ALL_DOCS.filter((d) => !requiredDocKeys.includes(d.key)),
+  ];
+
+  // ── Completion progress ────────────────────────────────
+  const completionItems = [
+    complianceForm.registration_number || selectedType === "individual",
+    !!complianceForm.business_type,
+    !!complianceForm.business_industry,
+    complianceForm.bvn?.length === 11,
+    ...requiredDocKeys.map((key) => {
+      const serverKey =
+        `${key === "nin" ? "nin_image" : key}_path` as keyof SettingsData;
+      return !!(settings?.[serverKey] || selectedFiles[key]);
+    }),
+  ];
+  const completedCount = completionItems.filter(Boolean).length;
+  const totalCount = completionItems.length;
+  const pct = Math.round((completedCount / totalCount) * 100);
+
+  // ── Handlers ───────────────────────────────────────────
   const handleSaveContact = async () => {
     setSavingSection("contact");
     try {
@@ -273,39 +338,8 @@ export default function Settings() {
   };
 
   const handleSaveCompliance = async () => {
-    const missingFields: string[] = [];
-
-    if (!complianceForm.registration_number.trim())
-      missingFields.push("Registration Number");
-    if (!complianceForm.business_type) missingFields.push("Business Type");
-    if (!complianceForm.business_industry) missingFields.push("Industry");
-    if (!complianceForm.bvn || complianceForm.bvn.length < 11)
-      missingFields.push("BVN (must be 11 digits)");
-
-    for (const { key, label, serverKey } of DOC_FIELDS) {
-      const alreadyUploaded = !!(
-        settings as unknown as Record<string, unknown>
-      )?.[serverKey];
-      const newlySelected = !!selectedFiles[key];
-      if (!alreadyUploaded && !newlySelected) {
-        missingFields.push(label);
-      }
-    }
-
-    if (missingFields.length > 0) {
-      setValidationErrors(new Set(missingFields));
-      showFeedback(
-        "error",
-        `Please complete the following:\n• ${missingFields.join("\n• ")}`,
-      );
-      return;
-    }
-
-    setValidationErrors(new Set());
     setSavingSection("compliance");
-
     try {
-      // ── Get access token from HttpOnly cookie via server route ──
       const tokenRes = await fetch("/api/token");
       if (!tokenRes.ok) {
         window.location.href = "/login";
@@ -352,12 +386,13 @@ export default function Settings() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to save compliance");
 
-      showFeedback("success", "Compliance documents submitted successfully.");
+      showFeedback("success", data.message || "Compliance documents saved.");
 
       if (data.data) {
         setSettings((prev) => (prev ? { ...prev, ...data.data } : prev));
       }
 
+      // Clear only newly uploaded files
       setSelectedFiles({
         nin: null,
         cac_certificate: null,
@@ -374,29 +409,20 @@ export default function Settings() {
       setSavingSection(null);
     }
   };
+
   const handleSavePreferences = async () => {
     setSavingSection("preferences");
     try {
-      // applyTheme(preferencesForm.theme);
-
       const res = await fetch("/api/settings/preferences", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          receive_email_notifications:
-            preferencesForm.receive_email_notifications,
-          receive_sms_notifications: preferencesForm.receive_sms_notifications,
-        }),
+        body: JSON.stringify(preferencesForm),
       });
-
       const data = await res.json();
       if (!res.ok)
         throw new Error(data.message || "Failed to save preferences");
-
-      if (data.data) {
+      if (data.data)
         setSettings((prev) => (prev ? { ...prev, ...data.data } : prev));
-      }
-
       showFeedback("success", "Preferences saved.");
     } catch (err: unknown) {
       showFeedback(
@@ -419,91 +445,108 @@ export default function Settings() {
     input.click();
   };
 
-  // ── Doc row ───────────────────────────────────
-  // FIX: removed non-standard `xs:` breakpoints; used `min-[480px]:` instead
+  // ── Doc Row ────────────────────────────────────────────
   const DocRow = ({
     docKey,
     label,
     serverKey,
+    hint,
+    isRequired,
   }: {
     docKey: DocKey;
     label: string;
     serverKey: keyof SettingsData;
+    hint: string;
+    isRequired: boolean;
   }) => {
     const existingUrl = settings?.[serverKey] as string | null;
     const existingName = existingUrl ? existingUrl.split("/").pop() : null;
     const selected = selectedFiles[docKey];
-    const hasError = !selected && !existingUrl && validationErrors.has(label);
+    const isUploaded = !!(existingUrl || selected);
 
     return (
       <div
         className={clsx(
-          "flex flex-col min-[480px]:flex-row min-[480px]:items-center justify-between",
-          "p-3 sm:p-4 border rounded-2xl gap-3 w-full overflow-hidden",
-          hasError ? "border-red-400 bg-red-50" : "border-border",
+          "flex flex-col gap-3 p-4 border rounded-2xl w-full overflow-hidden transition-colors",
+          isUploaded
+            ? "border-green-200 bg-green-50/30"
+            : isRequired
+              ? "border-amber-200 bg-amber-50/20"
+              : "border-border bg-background",
         )}
       >
-        {/* Label + status */}
-        <div className="flex items-start min-[480px]:items-center gap-3 min-w-0 flex-1">
-          <FileText
-            className="opacity-75 shrink-0 mt-0.5 min-[480px]:mt-0"
-            size={18}
-          />
-          <div className="min-w-0 flex-1 overflow-hidden">
-            <p className="font-medium text-sm leading-snug break-words">
-              {label}
-            </p>
-
-            <div className="text-[12px] opacity-80 mt-0.5">
-              {selected ? (
-                <span className="text-blue-600 block truncate wrap-break-word">
-                  {selected.name.length > 25
-                    ? selected.name.substring(0, 25)
-                    : selected.name}
-                </span>
-              ) : existingName ? (
-                <span className="text-green-600 flex items-center gap-1 min-w-0 wrap-break-word">
-                  <CheckCircle size={10} className="shrink-0" />
-                  <span className="truncate min-w-0">
-                    {existingName.length > 25
-                      ? existingName.substring(0, 25)
-                      : existingName}
-                  </span>
-                </span>
-              ) : (
-                <span className="text-gray-400">No file uploaded</span>
-              )}
+        {/* Top row: label + badge + actions */}
+        <div className="flex flex-col min-[480px]:flex-row min-[480px]:items-center justify-between gap-2">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <FileText className="opacity-60 shrink-0 mt-0.5" size={16} />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                <p className="font-medium text-sm leading-snug">{label}</p>
+                <DocStatusBadge uploaded={isUploaded} required={isRequired} />
+              </div>
+              <p className="text-[11px] text-gray-400 leading-snug">{hint}</p>
             </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 shrink-0 self-end min-[480px]:self-auto">
+            {existingUrl && !selected && (
+              <a
+                href={existingUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="p-1.5 rounded-lg hover:bg-gray-100 opacity-70 transition-colors"
+                title="View uploaded file"
+              >
+                <ExternalLink size={14} />
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => triggerFileInput(docKey)}
+              className={clsx(
+                "px-3 py-1.5 text-sm font-medium border rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0",
+                isUploaded
+                  ? "border-green-300 text-green-700 hover:bg-green-100"
+                  : isRequired
+                    ? "border-amber-300 text-amber-700 hover:bg-amber-100"
+                    : "border-gray-200 text-gray-600 hover:bg-gray-100",
+              )}
+            >
+              <Upload size={13} />
+              {isUploaded ? "Replace" : "Upload"}
+            </button>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 shrink-0 self-end min-[480px]:self-auto">
-          {existingUrl && !selected && (
-            <a
-              href={existingUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="p-1.5 rounded-lg hover:bg-gray-100 opacity-80 transition-colors"
-              title="View"
+        {/* Selected file preview */}
+        {selected && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl text-[12px] text-blue-700">
+            <CheckCircle size={12} className="shrink-0" />
+            <span className="truncate font-medium">{selected.name}</span>
+            <button
+              onClick={() =>
+                setSelectedFiles((prev) => ({ ...prev, [docKey]: null }))
+              }
+              className="ml-auto shrink-0 text-blue-400 hover:text-blue-600"
             >
-              <ExternalLink size={14} />
-            </a>
-          )}
-          <button
-            type="button"
-            onClick={() => triggerFileInput(docKey)}
-            className="px-3 py-1.5 text-sm font-medium opacity-80 hover:bg-gray-100 border border-gray-200 rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0"
-          >
-            <Upload size={13} />
-            {existingName || selected ? "Replace" : "Upload"}
-          </button>
-        </div>
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Existing file */}
+        {!selected && existingName && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-xl text-[12px] text-green-700">
+            <CheckCircle size={12} className="shrink-0" />
+            <span className="truncate">{decodeURIComponent(existingName)}</span>
+          </div>
+        )}
       </div>
     );
   };
 
-  // ── Render guards ─────────────────────────────
+  // ── Guards ─────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-[300px] flex items-center justify-center">
@@ -524,7 +567,7 @@ export default function Settings() {
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 rounded-xl border border-red-300 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+            className="px-4 py-2 rounded-xl border border-red-300 text-red-600 text-sm font-medium hover:bg-red-100"
           >
             Retry
           </button>
@@ -533,7 +576,7 @@ export default function Settings() {
     );
   }
 
-  // ── JSX ───────────────────────────────────────
+  // ── Main JSX ───────────────────────────────────────────
   return (
     <section className="max-w-5xl mx-auto pt-5 sm:pt-10 pb-5 sm:pb-8">
       <div className="mb-5 sm:mb-8">
@@ -545,7 +588,7 @@ export default function Settings() {
         </p>
       </div>
 
-      {/* ── Feedback banner ── */}
+      {/* Feedback */}
       {feedback && (
         <div
           className={clsx(
@@ -560,25 +603,20 @@ export default function Settings() {
           ) : (
             <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
           )}
-          {/* FIX: break-words prevents long error text overflowing on narrow screens */}
           <p className="whitespace-pre-line leading-snug break-words min-w-0 flex-1">
             {feedback.message}
           </p>
           <button
             onClick={() => setFeedback(null)}
-            className="ml-auto shrink-0 opacity-50 hover:opacity-100 transition-opacity text-lg leading-none"
-            aria-label="Dismiss"
+            className="ml-auto shrink-0 opacity-50 hover:opacity-100 text-lg leading-none"
           >
             ×
           </button>
         </div>
       )}
 
-      {/* ── Tabs ── */}
-      <div
-        className="w-full overflow-x-auto border-b border-border mb-5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-        role="tablist"
-      >
+      {/* Tabs */}
+      <div className="w-full overflow-x-auto border-b border-border mb-5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div className="flex w-full min-w-0">
           {(
             [
@@ -594,8 +632,7 @@ export default function Settings() {
               aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={clsx(
-                "flex-1 flex items-center justify-center gap-1.5 pb-3 sm:pb-4",
-                "px-1 sm:px-3",
+                "flex-1 flex items-center justify-center gap-1.5 pb-3 sm:pb-4 px-1 sm:px-3",
                 "border-b-2 transition-all text-xs sm:text-sm font-medium",
                 activeTab === tab.id
                   ? "border-accent text-accent"
@@ -613,16 +650,13 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* ── Profile Tab ── */}
+      {/* ── Profile Tab ─────────────────────────────────── */}
       {activeTab === "profile" && (
         <div className="bg-background rounded-2xl sm:rounded-3xl border border-border p-4 sm:p-8">
-          <div className="flex flex-wrap items-start sm:items-center justify-between gap-3 mb-5 sm:mb-6">
-            <h2 className="text-base sm:text-[18px] font-semibold flex items-center gap-2 sm:gap-3">
-              <User className="opacity-75 shrink-0" size={18} />
-              Personal & Business Information
-            </h2>
-          </div>
-
+          <h2 className="text-base sm:text-[18px] font-semibold flex items-center gap-2 mb-5 sm:mb-6">
+            <User className="opacity-75 shrink-0" size={18} />
+            Personal & Business Information
+          </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-8">
             {[
               { label: "Full Name", value: settings.fullname },
@@ -641,7 +675,7 @@ export default function Settings() {
                 </label>
                 <p
                   className={clsx(
-                    "font-medium text-sm sm:text-[15px] break-words overflow-hidden",
+                    "font-medium text-sm sm:text-[15px] break-words",
                     mono && "font-mono tracking-wide",
                   )}
                 >
@@ -650,7 +684,6 @@ export default function Settings() {
               </div>
             ))}
           </div>
-
           <p className="text-[11px] sm:text-[12px] text-amber-600 mt-6 sm:mt-8 flex items-start gap-2">
             <AlertCircle size={14} className="shrink-0 mt-0.5" />
             Some fields are immutable. Contact support to make changes.
@@ -658,13 +691,12 @@ export default function Settings() {
         </div>
       )}
 
-      {/* ── Contact Tab ── */}
+      {/* ── Contact Tab ─────────────────────────────────── */}
       {activeTab === "contact" && (
         <div className="bg-background rounded-2xl sm:rounded-3xl border border-border p-4 sm:p-8 max-w-2xl">
           <h2 className="text-lg sm:text-xl font-semibold mb-5 sm:mb-6">
             Contact Information
           </h2>
-
           <div className="space-y-5 sm:space-y-6">
             <div>
               <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
@@ -680,7 +712,6 @@ export default function Settings() {
                 placeholder="alternate@email.com"
               />
             </div>
-
             <div>
               <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
                 Phone Number (Primary)
@@ -693,7 +724,6 @@ export default function Settings() {
               </p>
             </div>
           </div>
-
           <button
             onClick={handleSaveContact}
             disabled={savingSection === "contact"}
@@ -707,263 +737,20 @@ export default function Settings() {
         </div>
       )}
 
-      {/* ── Compliance Tab ── */}
+      {/* ── Compliance Tab ───────────────────────────────── */}
       {activeTab === "compliance" && (
         <div className="bg-background rounded-2xl sm:rounded-3xl border border-border p-4 sm:p-8 w-full overflow-hidden">
-          {/* Header */}
-          <div className="flex flex-col min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between gap-2 mb-2">
-            <h2 className="text-lg sm:text-xl font-semibold">
-              Business Verification (KYC)
-            </h2>
-            <div>
-              <VerificationBadge status={settings.verification_status} />
-            </div>
-          </div>
-          <p className="opacity-80 text-xs sm:text-sm mb-6 sm:mb-8">
-            Complete all fields and upload required documents to unlock full
-            platform features.
-          </p>
-
-          <div className="space-y-8 w-full sm:space-y-10">
-            {/* Business Info */}
-            <div className="flex flex-col gap-7">
-              <h3 className="font-semibold mb-4 text-sm sm:text-[15px]">
-                Business Information
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 w-full">
-                <div className="w-full min-w-0">
-                  <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
-                    Registration Number (RC / BN)
-                  </label>
-                  <input
-                    type="text"
-                    value={complianceForm.registration_number}
-                    onChange={(e) =>
-                      setComplianceForm((f) => ({
-                        ...f,
-                        registration_number: e.target.value,
-                      }))
-                    }
-                    className={clsx(
-                      "w-full px-4 py-2.5 border rounded-2xl focus:border-gray-400 outline-none text-sm",
-                      validationErrors.has("Registration Number")
-                        ? "border-red-400 bg-red-50"
-                        : "border-border",
-                    )}
-                    placeholder="RC-1234567"
-                  />
-                </div>
-
-                <div className="w-full min-w-0">
-                  <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
-                    Business Type
-                  </label>
-                  <div
-                    className={clsx(
-                      "px-4 py-2.5 border rounded-2xl w-full",
-                      validationErrors.has("Business Type")
-                        ? "border-red-400 bg-red-50"
-                        : "border-border",
-                    )}
-                  >
-                    <select
-                      value={complianceForm.business_type}
-                      onChange={(e) =>
-                        setComplianceForm((f) => ({
-                          ...f,
-                          business_type: e.target.value,
-                        }))
-                      }
-                      className="w-full focus:border-gray-400 outline-none text-sm bg-transparent"
-                    >
-                      <option value="">Select type</option>
-                      {BUSINESS_TYPES.map((type) => (
-                        <option key={type} value={type}>
-                          {type.charAt(0).toUpperCase() + type.slice(1)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 w-full">
-                <div className="w-full min-w-0">
-                  <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
-                    Industry
-                  </label>
-                  <div
-                    className={clsx(
-                      "px-4 py-2.5 border rounded-2xl w-full",
-                      validationErrors.has("Industry")
-                        ? "border-red-400 bg-red-50"
-                        : "border-border",
-                    )}
-                  >
-                    <select
-                      value={complianceForm.business_industry}
-                      onChange={(e) =>
-                        setComplianceForm((f) => ({
-                          ...f,
-                          business_industry: e.target.value,
-                        }))
-                      }
-                      className="w-full focus:border-gray-400 outline-none text-sm bg-transparent"
-                    >
-                      <option value="">Select industry</option>
-                      {BUSINESS_INDUSTRIES.map((ind) => (
-                        <option key={ind} value={ind}>
-                          {ind}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* BVN spans full width */}
-                <div className="w-full min-w-0">
-                  <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
-                    BVN
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={complianceForm.bvn}
-                    onChange={(e) => {
-                      const val = e.target.value
-                        .replace(/\D/g, "")
-                        .slice(0, 11);
-                      setComplianceForm((f) => ({ ...f, bvn: val }));
-                    }}
-                    className={clsx(
-                      "w-full px-4 py-2.5 border rounded-2xl focus:border-gray-400 outline-none text-sm font-mono tracking-wider",
-                      validationErrors.has("BVN (must be 11 digits)")
-                        ? "border-red-400 bg-red-50"
-                        : "border-border",
-                    )}
-                    placeholder="11-digit BVN"
-                    maxLength={11}
-                  />
-                </div>
-              </div>
-
-              {/* Website — optional, spans full width */}
-              <div className="col-span-1 sm:col-span-2 w-full min-w-0">
-                <label className="block text-[12px] font-semibold uppercase tracking-wide opacity-80 mb-2">
-                  Website{" "}
-                  <span className="normal-case font-normal opacity-60">
-                    (optional)
-                  </span>
-                </label>
-                <input
-                  type="url"
-                  value={complianceForm.website}
-                  onChange={(e) =>
-                    setComplianceForm((f) => ({
-                      ...f,
-                      website: e.target.value,
-                    }))
-                  }
-                  className="w-full lg:w-[50%] px-4 py-2.5 border border-border rounded-2xl focus:border-gray-400 outline-none text-sm"
-                  placeholder="https://yourbusiness.com"
-                />
-                <p className="text-[11px] opacity-75 mt-1">
-                  Your business website, if available.
-                </p>
-              </div>
-            </div>
-
-            {/* Documents */}
-            <div className="w-full min-w-0">
-              <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-[15px]">
-                Required Documents
-              </h3>
-              <p className="text-xs opacity-80 mb-3 sm:mb-4">
-                Accepted formats: PDF, JPEG, PNG, GIF, WEBP · Max size: 5MB per
-                file
-              </p>
-              <div className="space-y-2.5 sm:space-y-3 w-full">
-                {DOC_FIELDS.map(({ key, label, serverKey }) => (
-                  <DocRow
-                    key={key}
-                    docKey={key}
-                    label={label}
-                    serverKey={serverKey}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Completion indicator */}
-            {(() => {
-              const filled = [
-                complianceForm.registration_number,
-                complianceForm.business_type,
-                complianceForm.business_industry,
-                complianceForm.bvn,
-                settings.nin_image_path || selectedFiles.nin,
-                settings.cac_certificate_path || selectedFiles.cac_certificate,
-                settings.status_report_path || selectedFiles.status_report,
-                settings.memorandum_path || selectedFiles.memorandum,
-                settings.board_resolution_path ||
-                  selectedFiles.board_resolution,
-              ].filter(Boolean).length;
-              const total = 9;
-              const pct = Math.round((filled / total) * 100);
-              return (
-                <div className="rounded-2xl p-3 sm:p-4 border border-border">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-gray-700">
-                      Completion
-                    </p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {pct}%
-                    </p>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className={clsx(
-                        "h-2 rounded-full transition-all",
-                        pct === 100
-                          ? "bg-green-500"
-                          : pct > 50
-                            ? "bg-blue-500"
-                            : "bg-amber-400",
-                      )}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <p className="text-[11px] opacity-75 mt-2">
-                    {filled} of {total} fields completed
-                    {pct === 100 ? " — Ready to submit!" : ""}
-                  </p>
-                </div>
-              );
-            })()}
-          </div>
-
-          <button
-            onClick={handleSaveCompliance}
-            disabled={savingSection === "compliance"}
-            className="mt-6 sm:mt-8 w-full sm:w-auto px-10 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold rounded-2xl flex items-center justify-center gap-2 transition-colors text-sm"
-          >
-            {savingSection === "compliance" && (
-              <Loader2 className="animate-spin" size={16} />
-            )}
-            Submit Compliance Documents
-          </button>
+          <ComplianceWizard />
         </div>
       )}
 
-      {/* ── Preferences Tab ── */}
+      {/* ── Preferences Tab ──────────────────────────────── */}
       {activeTab === "preferences" && (
         <div className="bg-background rounded-2xl sm:rounded-3xl border border-border p-4 sm:p-8 max-w-2xl">
           <h2 className="text-lg sm:text-xl font-semibold mb-6 sm:mb-8">
             Preferences
           </h2>
-
           <div className="space-y-8 sm:space-y-10">
-            {/* Notifications */}
             <div>
               <h3 className="font-semibold mb-4 sm:mb-5 flex items-center gap-2 text-sm sm:text-[15px]">
                 <Bell size={16} /> Notifications
@@ -1031,7 +818,6 @@ export default function Settings() {
               </div>
             </div>
           </div>
-
           <button
             onClick={handleSavePreferences}
             disabled={savingSection === "preferences"}
