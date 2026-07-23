@@ -1,28 +1,39 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
 import {
-  RiAddLine,
-  RiMoreFill,
-  RiEyeLine,
-  RiEyeOffLine,
   RiSearchLine,
+  RiMoreFill,
   RiRefreshLine,
-  RiCloseLine,
-  RiUserLine,
-  RiMailLine,
-  RiPhoneLine,
-  RiBankCardLine,
-  RiBuilding2Line,
+  RiFileCopyLine,
+  RiCheckLine,
+  RiBankLine,
+  RiShieldCheckLine,
+  RiTimeLine,
+  RiAlertLine,
 } from "react-icons/ri";
-import { Avatar, Button, ProgressCircle, Table } from "@heroui/react";
-import { authService, User } from "@/app/lib/auth";
-import { BusinessVerificationStatus } from "@/app/components/business_verification_status";
+import { Table } from "@heroui/react";
+import { useState, useEffect, useCallback } from "react";
+import clsx from "clsx";
 
 // ─────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────
-interface StaticAccount {
+interface BusinessAccount {
+  id: string;
+  account_number: string;
+  account_name: string;
+  bank_name: string;
+  bank_code: string;
+  currency: string;
+  tier: string;
+  tier_label: string;
+  status: string;
+  daily_limit: number | null;
+  max_transaction_limit: number | null;
+  activated_at: string | null;
+}
+
+interface CustomerAccount {
   id: string;
   account_ref: string;
   customer_name: string;
@@ -33,7 +44,11 @@ interface StaticAccount {
   bank_name: string;
   bank_code: string;
   currency: string;
+  type: "static" | "dynamic";
+  tier: string;
   status: string;
+  is_expired: boolean;
+  expires_at: string | null;
   provider: string;
   is_default: boolean;
   created_at: string;
@@ -48,30 +63,9 @@ interface PaginationMeta {
   to: number | null;
 }
 
-interface GenerateForm {
-  customer_firstname: string;
-  customer_lastname: string;
-  customer_email: string;
-  customer_phone: string;
-}
-
-interface GenerateResult {
-  account_number: string;
-  bank_name: string;
-  account_name: string;
-}
-
 // ─────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractAccounts(data: any): StaticAccount[] {
-  if (!data) return [];
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data.data)) return data.data;
-  return [];
-}
-
 function formatDate(dateString: string): string {
   if (!dateString) return "—";
   return new Date(dateString).toLocaleDateString("en-NG", {
@@ -81,265 +75,289 @@ function formatDate(dateString: string): string {
   });
 }
 
+function formatCurrency(amount: number | null): string {
+  if (!amount) return "Unlimited";
+  return "₦" + new Intl.NumberFormat("en-NG").format(amount);
+}
+
 // ─────────────────────────────────────────────────────────
-// Generate Modal
+// Status Badge
 // ─────────────────────────────────────────────────────────
-function GenerateModal({
-  onClose,
-  onSuccess,
+function StatusBadge({
+  status,
+  isExpired,
 }: {
-  onClose: () => void;
-  onSuccess: (result: GenerateResult) => void;
+  status: string;
+  isExpired?: boolean;
 }) {
-  const [form, setForm] = useState<GenerateForm>({
-    customer_firstname: "",
-    customer_lastname: "",
-    customer_email: "",
-    customer_phone: "",
-  });
-  const [errors, setErrors] = useState<Partial<GenerateForm>>({});
-  const [loading, setLoading] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
-
-  const validate = (): boolean => {
-    const e: Partial<GenerateForm> = {};
-    if (!form.customer_firstname.trim()) e.customer_firstname = "Required";
-    if (!form.customer_lastname.trim()) e.customer_lastname = "Required";
-    if (
-      !form.customer_email.trim() ||
-      !/\S+@\S+\.\S+/.test(form.customer_email)
-    )
-      e.customer_email = "Valid email required";
-    if (!form.customer_phone.trim()) e.customer_phone = "Required";
-    setErrors(e);
-    return Object.keys(e).length === 0;
+  if (isExpired) {
+    return (
+      <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+        Expired
+      </span>
+    );
+  }
+  const styles: Record<string, string> = {
+    active: "bg-green-50 text-green-600",
+    inactive: "bg-gray-100 text-gray-500",
+    suspended: "bg-red-50 text-red-600",
+    pending_activation: "bg-amber-50 text-amber-600",
+    failed_creation: "bg-red-50 text-red-600",
+    expired: "bg-gray-100 text-gray-500",
   };
-
-  const handleSubmit = async () => {
-    if (!validate()) return;
-    setLoading(true);
-    setApiError(null);
-
-    try {
-      const res = await fetch("/api/accounts/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || data.status === 500) {
-        throw new Error(data.message || "Failed to generate account");
-      }
-
-      const bankAccount = data.data?.details?.bank_account ?? {};
-      onSuccess({
-        account_number: bankAccount.account_number ?? "—",
-        bank_name: bankAccount.bank_name ?? "—",
-        account_name: bankAccount.account_name ?? "—",
-      });
-    } catch (err: unknown) {
-      setApiError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const field = (
-    key: keyof GenerateForm,
-    label: string,
-    placeholder: string,
-    icon: React.ReactNode,
-    type = "text",
-  ) => (
-    <div>
-      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-        {icon} {label}
-      </label>
-      <input
-        type={type}
-        value={form[key]}
-        onChange={(e) => {
-          setForm((f) => ({ ...f, [key]: e.target.value }));
-          setErrors((er) => ({ ...er, [key]: undefined }));
-        }}
-        placeholder={placeholder}
-        className={`w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all ${
-          errors[key]
-            ? "border-red-300 bg-red-50"
-            : "border-gray-200 focus:border-gray-400 bg-gray-50 focus:bg-white"
-        }`}
-      />
-      {errors[key] && (
-        <p className="text-xs text-red-500 mt-1">{errors[key]}</p>
-      )}
-    </div>
-  );
-
   return (
-    <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+    <span
+      className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${styles[status] ?? "bg-gray-100 text-gray-500"}`}
     >
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">
-            Generate Static Account
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <RiCloseLine size={22} />
-          </button>
-        </div>
-
-        {/* Form */}
-        <div className="px-5 py-5 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            {field(
-              "customer_firstname",
-              "First Name",
-              "John",
-              <RiUserLine size={12} />,
-            )}
-            {field(
-              "customer_lastname",
-              "Last Name",
-              "Doe",
-              <RiUserLine size={12} />,
-            )}
-          </div>
-          {field(
-            "customer_email",
-            "Email",
-            "john@example.com",
-            <RiMailLine size={12} />,
-            "email",
-          )}
-          {field(
-            "customer_phone",
-            "Phone",
-            "+234 800 000 0000",
-            <RiPhoneLine size={12} />,
-          )}
-
-          {apiError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-              {apiError}
-            </div>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="px-5 pb-5 flex gap-2">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="flex-1 py-2.5 rounded-xl bg-accent cursor-pointer text-white text-sm font-semibold hover:bg-tertiary transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <RiRefreshLine size={14} className="animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <RiAddLine size={14} />
-                Generate Account
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
+      {status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+    </span>
   );
 }
 
 // ─────────────────────────────────────────────────────────
-// Success Modal — shown after generation
+// Type Badge
 // ─────────────────────────────────────────────────────────
-function SuccessModal({
-  result,
-  onClose,
-}: {
-  result: GenerateResult;
-  onClose: () => void;
-}) {
+function TypeBadge({ type }: { type: string }) {
   return (
-    <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+    <span
+      className={clsx(
+        "inline-flex px-2.5 py-1 rounded-full text-xs font-medium",
+        type === "static"
+          ? "bg-blue-50 text-blue-600"
+          : "bg-purple-50 text-purple-600",
+      )}
     >
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">Account Generated</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <RiCloseLine size={22} />
-          </button>
-        </div>
+      {type === "static" ? "Static" : "Dynamic"}
+    </span>
+  );
+}
 
-        <div className="px-5 py-6 space-y-3">
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center mb-4">
-            <p className="text-green-700 text-sm font-medium">
-              Static account created successfully
+// ─────────────────────────────────────────────────────────
+// Copy Button
+// ─────────────────────────────────────────────────────────
+function CopyButton({ value, label }: { value: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-1 text-gray-400 hover:text-gray-700 transition-colors"
+      title={`Copy ${label ?? value}`}
+    >
+      {copied ? (
+        <RiCheckLine size={14} className="text-green-500" />
+      ) : (
+        <RiFileCopyLine size={14} />
+      )}
+    </button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Business Account Card
+// ─────────────────────────────────────────────────────────
+function BusinessAccountCard({
+  account,
+  verificationStatus,
+}: {
+  account: BusinessAccount | null;
+  verificationStatus: string;
+}) {
+  const [copiedAll, setCopiedAll] = useState(false);
+
+  const handleCopyAll = async () => {
+    if (!account) return;
+    await navigator.clipboard.writeText(
+      `Bank: ${account.bank_name}\nAccount Name: ${account.account_name}\nAccount Number: ${account.account_number}`,
+    );
+    setCopiedAll(true);
+    setTimeout(() => setCopiedAll(false), 2000);
+  };
+
+  const isVerified = verificationStatus === "verified";
+
+  // ── Not verified ───────────────────────────────────────
+  if (!isVerified) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 px-6 border-2 border-dashed border-gray-200 rounded-3xl text-center bg-gray-50">
+        <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center mb-3">
+          <RiShieldCheckLine size={24} className="text-amber-600" />
+        </div>
+        <h3 className="font-bold text-gray-900 mb-1">
+          Account Not Assigned Yet
+        </h3>
+        <p className="text-sm text-gray-500 max-w-sm leading-relaxed mb-4">
+          Your dedicated bank account will be automatically assigned once your
+          business KYC verification is approved.
+        </p>
+        <div
+          className={clsx(
+            "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border",
+            verificationStatus === "under_review"
+              ? "bg-blue-50 border-blue-200 text-blue-700"
+              : verificationStatus === "rejected"
+                ? "bg-red-50 border-red-200 text-red-700"
+                : "bg-amber-50 border-amber-200 text-amber-700",
+          )}
+        >
+          {verificationStatus === "under_review" ? (
+            <RiTimeLine size={14} />
+          ) : (
+            <RiAlertLine size={14} />
+          )}
+          {verificationStatus === "under_review"
+            ? "KYC Under Review"
+            : verificationStatus === "rejected"
+              ? "KYC Rejected — Please Resubmit"
+              : "KYC Verification Required"}
+        </div>
+        {verificationStatus !== "under_review" && (
+          <a
+            href="/dashboard/settings?completeVerification=true"
+            className="mt-3 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-colors"
+          >
+            Complete Verification
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  // ── Verified but no account yet ────────────────────────
+  if (!account) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 px-6 border-2 border-dashed border-gray-200 rounded-3xl text-center bg-gray-50">
+        <div className="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center mb-3">
+          <RiTimeLine size={24} className="text-blue-600" />
+        </div>
+        <h3 className="font-bold text-gray-900 mb-1">Account Being Set Up</h3>
+        <p className="text-sm text-gray-500 max-w-sm leading-relaxed">
+          Your business is verified. Your dedicated bank account is being set up
+          and will appear here shortly.
+        </p>
+      </div>
+    );
+  }
+
+  // ── Account card ───────────────────────────────────────
+  return (
+    <div className="rounded-3xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+      {/* Card header */}
+      <div className="px-6 py-4 bg-gray-900 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+            <RiBankLine size={18} className="text-white" />
+          </div>
+          <div>
+            <p className="text-white font-semibold text-sm">
+              {account.bank_name}
+            </p>
+            <p className="text-white/60 text-[11px]">Your Business Account</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white/10 text-white/80">
+            Tier {account.tier}
+          </span>
+          <span
+            className={clsx(
+              "text-[11px] font-semibold px-2.5 py-1 rounded-full",
+              account.status === "active"
+                ? "bg-green-500/20 text-green-300"
+                : "bg-red-500/20 text-red-300",
+            )}
+          >
+            {account.status === "active" ? "Active" : account.status}
+          </span>
+        </div>
+      </div>
+
+      {/* Account details */}
+      <div className="divide-y divide-gray-100">
+        {/* Account number */}
+        <div className="flex items-center justify-between px-6 py-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-0.5">
+              Account Number
+            </p>
+            <p className="text-2xl font-bold text-gray-900 tracking-widest font-mono">
+              {account.account_number}
             </p>
           </div>
-
-          {[
-            {
-              icon: <RiBankCardLine size={14} />,
-              label: "Account Number",
-              value: result.account_number,
-              mono: true,
-            },
-            {
-              icon: <RiBuilding2Line size={14} />,
-              label: "Bank Name",
-              value: result.bank_name,
-            },
-            {
-              icon: <RiUserLine size={14} />,
-              label: "Account Name",
-              value: result.account_name,
-            },
-          ].map(({ icon, label, value, mono }) => (
-            <div
-              key={label}
-              className="flex items-center justify-between gap-4"
-            >
-              <div className="flex items-center gap-2 text-gray-500 shrink-0">
-                {icon}
-                <span className="text-sm">{label}</span>
-              </div>
-              <span
-                className={`text-sm font-medium text-right ${mono ? "font-mono" : ""}`}
-              >
-                {value}
-              </span>
-            </div>
-          ))}
+          <CopyButton value={account.account_number} label="account number" />
         </div>
 
-        <div className="px-5 pb-5">
-          <button
-            onClick={onClose}
-            className="w-full py-2.5 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800 transition-colors"
-          >
-            Done
-          </button>
+        {/* Account name */}
+        <div className="flex items-center justify-between px-6 py-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-0.5">
+              Account Name
+            </p>
+            <p className="text-base font-semibold text-gray-900">
+              {account.account_name}
+            </p>
+          </div>
+          <CopyButton value={account.account_name} label="account name" />
         </div>
+
+        {/* Bank name */}
+        <div className="flex items-center justify-between px-6 py-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-0.5">
+              Bank Name
+            </p>
+            <p className="text-base font-semibold text-gray-900">
+              {account.bank_name}
+            </p>
+          </div>
+          <CopyButton value={account.bank_name} label="bank name" />
+        </div>
+
+        {/* Limits */}
+        <div className="grid grid-cols-2 divide-x divide-gray-100">
+          <div className="px-6 py-4">
+            <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-0.5">
+              Daily Limit
+            </p>
+            <p className="text-sm font-semibold text-gray-900">
+              {formatCurrency(account.daily_limit)}
+            </p>
+          </div>
+          <div className="px-6 py-4">
+            <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-0.5">
+              Max Per Transaction
+            </p>
+            <p className="text-sm font-semibold text-gray-900">
+              {formatCurrency(account.max_transaction_limit)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Copy all */}
+      <div className="px-6 py-4 border-t border-gray-100">
+        <button
+          onClick={handleCopyAll}
+          className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+        >
+          {copiedAll ? (
+            <>
+              <RiCheckLine size={15} className="text-green-500" />
+              <span className="text-green-600">Copied!</span>
+            </>
+          ) : (
+            <>
+              <RiFileCopyLine size={15} />
+              Copy All Account Details
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
@@ -349,410 +367,367 @@ function SuccessModal({
 // Main Page
 // ─────────────────────────────────────────────────────────
 export default function AccountsPage() {
-  const [showBalance, setShowBalance] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [business, setBusiness] = useState<any>(null);
-  const [pageLoading, setPageLoading] = useState(true);
+  // ── Business account state ─────────────────────────────
+  const [businessAccount, setBusinessAccount] =
+    useState<BusinessAccount | null>(null);
+  const [verificationStatus, setVerificationStatus] =
+    useState<string>("unverified");
+  const [businessLoading, setBusinessLoading] = useState(true);
 
-  // Accounts list state
-  const [accounts, setAccounts] = useState<StaticAccount[]>([]);
+  // ── Customer accounts state ────────────────────────────
+  const [customers, setCustomers] = useState<CustomerAccount[]>([]);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
-  const [accountsLoading, setAccountsLoading] = useState(true);
-  const [accountsError, setAccountsError] = useState<string | null>(null);
+  const [customersLoading, setCustomersLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Modals
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [generateResult, setGenerateResult] = useState<GenerateResult | null>(
-    null,
+  const [typeFilter, setTypeFilter] = useState<"all" | "static" | "dynamic">(
+    "all",
   );
 
-  // ── Load user/business ────────────────────────
+  // ── Active tab ─────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<"business" | "customers">(
+    "business",
+  );
+
+  // ── Fetch business account ─────────────────────────────
   useEffect(() => {
     (async () => {
       try {
-        const { isAuthenticated, user, business } =
-          await authService.checkAuth();
-        if (isAuthenticated && user) {
-          setUser(user);
-          setBusiness(business);
+        const res = await fetch("/api/accounts/business");
+        if (res.status === 401) {
+          window.location.href = "/login";
+          return;
         }
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.message);
+        setBusinessAccount(json.data?.business_account ?? null);
+        setVerificationStatus(json.data?.verification_status ?? "unverified");
       } catch (e) {
-        console.error("Auth error:", e);
+        console.error(e);
       } finally {
-        setPageLoading(false);
+        setBusinessLoading(false);
       }
     })();
   }, []);
 
-  // ── Fetch static accounts ─────────────────────
-  const fetchAccounts = useCallback(async () => {
-    setAccountsLoading(true);
-    setAccountsError(null);
+  // ── Debounce search ────────────────────────────────────
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 400);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // ── Fetch customer accounts ────────────────────────────
+  const fetchCustomers = useCallback(async () => {
+    setCustomersLoading(true);
     try {
       const params = new URLSearchParams({
         page: String(currentPage),
         per_page: "20",
+        type: typeFilter,
       });
       if (debouncedSearch) params.set("search", debouncedSearch);
 
-      const res = await fetch(`/api/accounts/static?${params.toString()}`);
+      const res = await fetch(`/api/accounts/customers?${params.toString()}`);
       if (res.status === 401) {
         window.location.href = "/login";
         return;
       }
-      if (!res.ok) throw new Error("Failed to load accounts");
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const json: any = await res.json();
-      setAccounts(extractAccounts(json.data));
-      setMeta(json.meta ?? null);
-    } catch (err: unknown) {
-      setAccountsError(
-        err instanceof Error ? err.message : "Something went wrong",
-      );
-      setAccounts([]);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message);
+      setCustomers(json.data?.accounts?.data ?? []);
+      setMeta(json.data?.meta ?? null);
+    } catch (e) {
+      console.error(e);
+      setCustomers([]);
     } finally {
-      setAccountsLoading(false);
+      setCustomersLoading(false);
     }
-  }, [currentPage, debouncedSearch]);
+  }, [currentPage, debouncedSearch, typeFilter]);
 
   useEffect(() => {
-    if (!pageLoading) fetchAccounts();
-  }, [fetchAccounts, pageLoading]);
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setSearchTerm(val);
-    setCurrentPage(1);
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(() => setDebouncedSearch(val), 400);
-  };
-
-  const handleGenerateSuccess = (result: GenerateResult) => {
-    setShowGenerateModal(false);
-    setGenerateResult(result);
-    fetchAccounts(); // refresh list
-  };
+    if (activeTab === "customers") fetchCustomers();
+  }, [fetchCustomers, activeTab]);
 
   const totalPages = meta?.last_page ?? 1;
 
-  if (pageLoading) {
-    return (
-      <div className="flex items-center justify-center mt-10">
-        <ProgressCircle isIndeterminate aria-label="Loading...">
-          <ProgressCircle.Track>
-            <ProgressCircle.TrackCircle />
-            <ProgressCircle.FillCircle />
-          </ProgressCircle.Track>
-        </ProgressCircle>
-      </div>
-    );
-  }
-
+  // ── Render ─────────────────────────────────────────────
   return (
-    <div className="w-full flex h-full flex-col items-center pt-5 sm:pt-6 pb-5 sm:pb-8">
-      <div className="max-w-310 flex flex-col gap-6 flex-1 w-full">
-        {business?.verification_status !== "verified" && (
-          <BusinessVerificationStatus status={business?.verification_status} />
-        )}
+    <div className="w-full flex flex-col items-center pt-5 sm:pt-8 pb-10">
+      <div className="max-w-310 w-full flex flex-col gap-6">
         {/* Header */}
-        <div className="flex gap-3 md:gap-0 flex-col md:flex-row items-start md:items-center justify-between mt-4">
-          <div className="">
-            <h1 className="text-[26px] md:text-[30px] font-bold text-gray-900 tracking-tight">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
               Accounts
             </h1>
-            <p className="text-[14px] text-gray-500 mt-1">
-              Main corporate account and customer sub accounts
-            </p>
-          </div>
-          <Button
-            className="flex items-center gap-2 bg-black text-white px-5 py-2.5 rounded-xl"
-            onClick={() => setShowGenerateModal(true)}
-          >
-            <RiAddLine size={20} />
-            Generate New Sub Account
-          </Button>
-        </div>
-
-        {/* Balance Card */}
-        <div className="grid grid-cols-1 gap-3 w-full max-w-120">
-          <div className="bg-accent px-5 py-6 gap-2 flex flex-col rounded-lg shadow-sm">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-white/75">
-                  Bank name
-                </p>
-                <p className="font-semibold text-white text-[18px]">
-                  DuraPayment MFB
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                className="p-2 text-white hover:bg-white/10"
-                isIconOnly
-                aria-label={showBalance ? "Hide balance" : "Show balance"}
-                onClick={() => setShowBalance((prev) => !prev)}
-              >
-                {showBalance ? (
-                  <RiEyeLine size={18} />
-                ) : (
-                  <RiEyeOffLine size={18} />
-                )}
-              </Button>
-            </div>
-            <p className="font-medium text-white text-[15px]">
-              Account No. {business?.account_number ?? "—"}
-            </p>
-            <p className="text-[30px] text-white font-semibold">
-              {showBalance
-                ? `₦${Number(business?.account_balance ?? 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`
-                : "****,***.**"}
+            <p className="text-sm text-gray-500 mt-1">
+              Manage your business account and customer virtual accounts
             </p>
           </div>
         </div>
 
-        {/* Sub Accounts Header + Search */}
-        <div className="flex flex-col lg:flex-row gap-3 justify-start md:justify-between items-start">
-          <div>
-            <h2 className="text-lg font-semibold">Customer Sub Accounts</h2>
-            <p className="text-sm text-gray-500">
-              Static accounts generated for customers
-              {meta ? ` · ${meta.total} total` : ""}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <RiSearchLine
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                size={14}
-              />
-              <input
-                value={searchTerm}
-                onChange={handleSearch}
-                placeholder="Search customer or account..."
-                className="pl-9 pr-4 py-2 border border-gray-200 rounded-full text-sm outline-none focus:border-gray-400 bg-white w-56"
-              />
-            </div>
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200">
+          {(
+            [
+              { id: "business", label: "My Business Account" },
+              { id: "customers", label: "Customer Accounts" },
+            ] as const
+          ).map((tab) => (
             <button
-              onClick={fetchAccounts}
-              className="p-2 rounded-full bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
-              title="Refresh"
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={clsx(
+                "px-5 py-3 text-sm font-medium border-b-2 transition-colors",
+                activeTab === tab.id
+                  ? "border-gray-900 text-gray-900"
+                  : "border-transparent text-gray-500 hover:text-gray-700",
+              )}
             >
-              <RiRefreshLine
-                size={15}
-                className={accountsLoading ? "animate-spin" : ""}
-              />
+              {tab.label}
             </button>
-          </div>
+          ))}
         </div>
 
-        {/* Error */}
-        {accountsError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex justify-between items-center">
-            <span>{accountsError}</span>
-            <button onClick={fetchAccounts} className="underline ml-4">
-              Retry
-            </button>
+        {/* ── Business Account Tab ─────────────────────── */}
+        {activeTab === "business" && (
+          <div className="max-w-lg">
+            {businessLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <RiRefreshLine
+                  className="animate-spin text-gray-400"
+                  size={28}
+                />
+              </div>
+            ) : (
+              <BusinessAccountCard
+                account={businessAccount}
+                verificationStatus={verificationStatus}
+              />
+            )}
           </div>
         )}
 
-        {/* Table */}
-        <Table variant="secondary">
-          <Table.ScrollContainer>
-            <Table.Content aria-label="Customer Sub Accounts">
-              <Table.Header>
-                <Table.Column isRowHeader>CUSTOMER</Table.Column>
-                <Table.Column className={"text-nowrap"}>
-                  ACCOUNT NUMBER
-                </Table.Column>
-                <Table.Column>BANK</Table.Column>
-                <Table.Column>CURRENCY</Table.Column>
-                <Table.Column>STATUS</Table.Column>
-                <Table.Column>CREATED</Table.Column>
-                <Table.Column className="text-right">ACTIONS</Table.Column>
-              </Table.Header>
-              <Table.Body>
-                {accountsLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <Table.Row key={i}>
-                      {Array.from({ length: 7 }).map((_, j) => (
-                        <Table.Cell key={j}>
-                          <div className="h-4 bg-gray-100 rounded animate-pulse w-full max-w-[120px]" />
-                        </Table.Cell>
-                      ))}
-                    </Table.Row>
-                  ))
-                ) : accounts.length === 0 ? (
-                  <Table.Row>
-                    <Table.Cell
-                      colSpan={7}
-                      className="text-center py-12 text-gray-400 text-sm"
-                    >
-                      No sub accounts yet. Generate one to get started.
-                    </Table.Cell>
-                  </Table.Row>
-                ) : (
-                  accounts.map((account) => (
-                    <Table.Row
-                      key={account.id}
-                      className="cursor-pointer hover:bg-gray-50"
-                    >
-                      <Table.Cell>
-                        <div className="flex items-center gap-3">
-                          <Avatar size="sm">
-                            <Avatar.Fallback>
-                              {account.customer_name
-                                .split(" ")
-                                .filter(Boolean)
-                                .map((n) => n[0])
-                                .slice(0, 2)
-                                .join("")
-                                .toUpperCase()}
-                            </Avatar.Fallback>
-                          </Avatar>
-                          <div className="flex flex-col leading-4">
-                            <p className="font-medium text-nowrap">
-                              {account.customer_name}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {account.customer_email}
-                            </p>
-                          </div>
-                        </div>
-                      </Table.Cell>
+        {/* ── Customer Accounts Tab ────────────────────── */}
+        {activeTab === "customers" && (
+          <div className="flex flex-col gap-4">
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
+              <div className="relative w-full sm:max-w-sm">
+                <RiSearchLine
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  size={16}
+                />
+                <input
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Search by name, email, account number..."
+                  className="pl-9 pr-4 py-2 rounded-full bg-white border border-gray-200 focus:border-gray-400 outline-none text-sm w-full"
+                />
+              </div>
 
-                      <Table.Cell>
-                        <p className="font-mono text-sm text-gray-700">
-                          {account.account_number}
-                        </p>
-                      </Table.Cell>
-
-                      <Table.Cell>
-                        <p className="text-sm text-nowrap">
-                          {account.bank_name}
-                        </p>
-                      </Table.Cell>
-
-                      <Table.Cell>
-                        <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                          {account.currency}
-                        </span>
-                      </Table.Cell>
-
-                      <Table.Cell>
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                            account.status === "active"
-                              ? "bg-green-50 text-green-600"
-                              : "bg-gray-100 text-gray-500"
-                          }`}
-                        >
-                          {account.status.charAt(0).toUpperCase() +
-                            account.status.slice(1)}
-                        </span>
-                      </Table.Cell>
-
-                      <Table.Cell className="text-sm text-nowrap text-gray-500">
-                        {formatDate(account.created_at)}
-                      </Table.Cell>
-
-                      <Table.Cell className="text-right">
-                        <Button
-                          variant="outline"
-                          isIconOnly
-                          aria-label="More options"
-                        >
-                          <RiMoreFill size={20} />
-                        </Button>
-                      </Table.Cell>
-                    </Table.Row>
-                  ))
-                )}
-              </Table.Body>
-            </Table.Content>
-          </Table.ScrollContainer>
-        </Table>
-
-        {/* Pagination */}
-        {!accountsLoading && meta && meta.total > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-4">
-            <p className="text-sm text-gray-500">
-              Showing {meta.from ?? 0}–{meta.to ?? 0} of {meta.total} accounts
-            </p>
-            <div className="flex items-center gap-1">
-              <button
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
-                className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Previous
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(
-                  (p) =>
-                    p === 1 ||
-                    p === totalPages ||
-                    Math.abs(p - currentPage) <= 1,
-                )
-                .reduce<(number | "...")[]>((acc, p, i, arr) => {
-                  if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("...");
-                  acc.push(p);
-                  return acc;
-                }, [])
-                .map((item, i) =>
-                  item === "..." ? (
-                    <span key={`e-${i}`} className="px-2 text-gray-400">
-                      …
-                    </span>
-                  ) : (
-                    <button
-                      key={item}
-                      onClick={() => setCurrentPage(item as number)}
-                      className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                        item === currentPage
-                          ? "bg-gray-900 text-white border-gray-900"
-                          : "border-gray-200 hover:bg-gray-50"
-                      }`}
-                    >
-                      {item}
-                    </button>
-                  ),
-                )}
-              <button
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage((p) => p + 1)}
-                className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Next
-              </button>
+              <div className="flex items-center gap-2">
+                {(["all", "static", "dynamic"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => {
+                      setTypeFilter(t);
+                      setCurrentPage(1);
+                    }}
+                    className={clsx(
+                      "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+                      typeFilter === t
+                        ? "bg-gray-900 text-white"
+                        : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50",
+                    )}
+                  >
+                    {t === "all"
+                      ? "All"
+                      : t === "static"
+                        ? "Static"
+                        : "Dynamic"}
+                  </button>
+                ))}
+                <button
+                  onClick={fetchCustomers}
+                  className="p-1.5 rounded-full bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  <RiRefreshLine
+                    size={16}
+                    className={customersLoading ? "animate-spin" : ""}
+                  />
+                </button>
+              </div>
             </div>
+
+            {/* Table */}
+            <Table variant="secondary" aria-label="Customer Accounts">
+              <Table.ScrollContainer>
+                <Table.Content>
+                  <Table.Header>
+                    <Table.Column isRowHeader>CUSTOMER</Table.Column>
+                    <Table.Column>ACCOUNT NUMBER</Table.Column>
+                    <Table.Column>BANK</Table.Column>
+                    <Table.Column>TYPE</Table.Column>
+                    <Table.Column>TIER</Table.Column>
+                    <Table.Column>STATUS</Table.Column>
+                    <Table.Column>EXPIRES</Table.Column>
+                    <Table.Column>CREATED</Table.Column>
+                    <Table.Column className="text-right">ACTIONS</Table.Column>
+                  </Table.Header>
+                  <Table.Body>
+                    {customersLoading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <Table.Row key={i}>
+                          {Array.from({ length: 9 }).map((_, j) => (
+                            <Table.Cell key={j}>
+                              <div className="h-4 bg-gray-100 rounded animate-pulse w-full max-w-[100px]" />
+                            </Table.Cell>
+                          ))}
+                        </Table.Row>
+                      ))
+                    ) : customers.length === 0 ? (
+                      <Table.Row>
+                        <Table.Cell
+                          colSpan={9}
+                          className="text-center py-12 text-gray-400 text-sm"
+                        >
+                          No customer accounts found
+                        </Table.Cell>
+                      </Table.Row>
+                    ) : (
+                      customers.map((account) => (
+                        <Table.Row key={account.id}>
+                          <Table.Cell>
+                            <div>
+                              <p className="font-medium text-sm text-nowrap">
+                                {account.customer_name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {account.customer_email}
+                              </p>
+                            </div>
+                          </Table.Cell>
+                          <Table.Cell>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-sm text-nowrap">
+                                {account.account_number}
+                              </span>
+                              <CopyButton
+                                value={account.account_number}
+                                label="account number"
+                              />
+                            </div>
+                          </Table.Cell>
+                          <Table.Cell>
+                            <p className="text-sm text-nowrap">
+                              {account.bank_name}
+                            </p>
+                          </Table.Cell>
+                          <Table.Cell>
+                            <TypeBadge type={account.type} />
+                          </Table.Cell>
+                          <Table.Cell>
+                            <span className="text-sm font-medium">
+                              Tier {account.tier}
+                            </span>
+                          </Table.Cell>
+                          <Table.Cell>
+                            <StatusBadge
+                              status={account.status}
+                              isExpired={account.is_expired}
+                            />
+                          </Table.Cell>
+                          <Table.Cell>
+                            <p className="text-sm text-gray-500 text-nowrap">
+                              {account.expires_at
+                                ? formatDate(account.expires_at)
+                                : "Never"}
+                            </p>
+                          </Table.Cell>
+                          <Table.Cell>
+                            <p className="text-sm text-gray-500 text-nowrap">
+                              {formatDate(account.created_at)}
+                            </p>
+                          </Table.Cell>
+                          <Table.Cell className="text-right">
+                            <button className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
+                              <RiMoreFill size={16} />
+                            </button>
+                          </Table.Cell>
+                        </Table.Row>
+                      ))
+                    )}
+                  </Table.Body>
+                </Table.Content>
+              </Table.ScrollContainer>
+            </Table>
+
+            {/* Pagination */}
+            {!customersLoading && totalPages > 1 && meta && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p className="text-sm text-gray-500">
+                  Showing {meta.from ?? 0}–{meta.to ?? 0} of {meta.total}{" "}
+                  accounts
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                    className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                  >
+                    Previous
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(
+                      (p) =>
+                        p === 1 ||
+                        p === totalPages ||
+                        Math.abs(p - currentPage) <= 1,
+                    )
+                    .reduce<(number | "...")[]>((acc, p, i, arr) => {
+                      if (i > 0 && p - (arr[i - 1] as number) > 1)
+                        acc.push("...");
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((item, i) =>
+                      item === "..." ? (
+                        <span key={`e-${i}`} className="px-2 text-gray-400">
+                          …
+                        </span>
+                      ) : (
+                        <button
+                          key={item}
+                          onClick={() => setCurrentPage(item as number)}
+                          className={clsx(
+                            "px-3 py-1.5 text-sm rounded-lg border transition-colors",
+                            item === currentPage
+                              ? "bg-gray-900 text-white border-gray-900"
+                              : "border-gray-200 hover:bg-gray-50",
+                          )}
+                        >
+                          {item}
+                        </button>
+                      ),
+                    )}
+                  <button
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
-
-        <div className="h-10" />
       </div>
-
-      {/* Generate Modal */}
-      {showGenerateModal && (
-        <GenerateModal
-          onClose={() => setShowGenerateModal(false)}
-          onSuccess={handleGenerateSuccess}
-        />
-      )}
-
-      {/* Success Modal */}
-      {generateResult && (
-        <SuccessModal
-          result={generateResult}
-          onClose={() => setGenerateResult(null)}
-        />
-      )}
     </div>
   );
 }
