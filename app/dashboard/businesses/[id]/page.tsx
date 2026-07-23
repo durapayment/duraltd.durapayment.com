@@ -381,7 +381,7 @@ function CreateAccountModal({
       label: "Tier 1",
       sub: isLLC
         ? "Corporate account — Director BVN + NIN required"
-        : "BVN + Date of Birth · ₦30,000 daily limit",
+        : "BVN + Date of Birth · ₦50,000 daily limit",
       available: !isUpgrade && !isLLC,
     },
     {
