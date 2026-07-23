@@ -352,66 +352,62 @@ function CreateAccountModal({
   business,
   onSuccess,
   onClose,
+  isUpgrade = false, // ← new prop
+  currentTier = "1", // ← new prop
 }: {
   business: BusinessDetail;
   onSuccess: (account: BusinessAccount) => void;
   onClose: () => void;
+  isUpgrade?: boolean;
+  currentTier?: string;
 }) {
-  const [tier, setTier] = useState<"1" | "2" | "3">("1");
+  // ── Start from next tier if upgrading ──────────────────
+  const defaultTier = isUpgrade
+    ? (String(Number(currentTier) + 1) as "1" | "2" | "3")
+    : "1";
+
+  const [tier, setTier] = useState<"1" | "2" | "3">(
+    defaultTier as "1" | "2" | "3",
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isLLC = business.business_type === "limited_liability";
 
+  // ── Only show tiers higher than current when upgrading ─
   const TIERS = [
     {
       value: "1" as const,
       label: "Tier 1",
       sub: isLLC
         ? "Corporate account — Director BVN + NIN required"
-        : "BVN + Date of Birth · ₦50,000 daily limit",
-      available: true,
+        : "BVN + Date of Birth · ₦30,000 daily limit",
+      available: !isUpgrade && !isLLC,
     },
     {
       value: "2" as const,
       label: "Tier 2",
       sub: "BVN + DOB + NIN · ₦200,000 daily limit",
-      available: !isLLC,
+      available: !isLLC && (!isUpgrade || Number(currentTier) < 2),
     },
     {
       value: "3" as const,
       label: "Tier 3",
       sub: "BVN + DOB + NIN + Address · Unlimited",
-      available: !isLLC,
+      available: !isLLC && (!isUpgrade || Number(currentTier) < 3),
     },
-  ].filter((t) => t.available);
+  ].filter((t) => t.available || (!isUpgrade && t.value === "1"));
 
   const checks = [
-    {
-      label: "BVN",
-      ok: !!business.bvn,
-      show: true,
-    },
-    {
-      label: "Date of Birth",
-      ok: !!business.date_of_birth,
-      show: true,
-    },
+    { label: "BVN", ok: !!business.bvn, show: true },
+    { label: "Date of Birth", ok: !!business.date_of_birth, show: true },
     {
       label: "NIN",
       ok: !!business.nin,
       show: (tier === "2" || tier === "3") && !isLLC,
     },
-    {
-      label: "Address",
-      ok: !!business.business_address,
-      show: tier === "3",
-    },
-    {
-      label: "RC Number",
-      ok: !!business.registration_number,
-      show: isLLC,
-    },
+    { label: "Address", ok: !!business.business_address, show: tier === "3" },
+    { label: "RC Number", ok: !!business.registration_number, show: isLLC },
     {
       label: "Director with BVN & NIN",
       ok: business.directors?.some((d) => !!d.bvn && !!d.nin) ?? false,
@@ -425,20 +421,22 @@ function CreateAccountModal({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/admin/businesses/${business.id}/create-account`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tier }),
-        },
-      );
+      // ── Use upgrade endpoint if upgrading ──────────────
+      const endpoint = isUpgrade
+        ? `/api/admin/businesses/${business.id}/upgrade-account`
+        : `/api/admin/businesses/${business.id}/create-account`;
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tier }),
+      });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.message ?? "Failed to create account");
+      if (!res.ok) throw new Error(json.message ?? "Failed");
       onSuccess(json.data);
       onClose();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Account creation failed");
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setLoading(false);
     }
@@ -453,12 +451,14 @@ function CreateAccountModal({
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100">
           <h3 className="text-[16px] font-bold text-gray-900">
-            Create VFD Account
+            {isUpgrade ? "Upgrade Account" : "Create Account"}
           </h3>
           <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
-            {isLLC
-              ? "A corporate account will be created for this Limited Liability Company using the primary director's details."
-              : "Select the account tier. Higher tiers have higher transaction limits."}
+            {isUpgrade
+              ? `Upgrade from Tier ${currentTier} to a higher tier for increased transaction limits.`
+              : isLLC
+                ? "A corporate account will be created for this Limited Liability Company."
+                : "Select the account tier. Higher tiers have higher transaction limits."}
           </p>
         </div>
 
@@ -523,8 +523,7 @@ function CreateAccountModal({
             {!allChecksPass && (
               <p className="text-[12px] text-amber-600 mt-3 flex items-center gap-1.5">
                 <RiAlertLine size={13} />
-                Some required fields are missing. Update business info before
-                creating account.
+                Some required fields are missing. Update business info first.
               </p>
             )}
           </div>
@@ -554,7 +553,7 @@ function CreateAccountModal({
             className="px-5 py-2.5 rounded-xl bg-gray-900 text-white text-[14px] font-semibold hover:bg-gray-800 transition-colors flex items-center gap-2 disabled:opacity-50"
           >
             {loading && <RiLoader4Line size={14} className="animate-spin" />}
-            Create Account
+            {isUpgrade ? "Upgrade Account" : "Create Account"}
           </button>
         </div>
       </div>
@@ -576,6 +575,7 @@ export default function BusinessDetailPage({
   const [error, setError] = useState<string | null>(null);
   const [modalAction, setModalAction] = useState<ModalAction>(null);
   const [showCreateAccount, setShowCreateAccount] = useState(false);
+  const [isUpgrading, setIsUpgrading] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: "ok" | "err";
     msg: string;
@@ -1025,11 +1025,28 @@ export default function BusinessDetailPage({
               icon={RiBankLine}
               action={
                 !business.business_account && status === "verified" ? (
+                  // ── No account yet — show create button ────────────
                   <button
-                    onClick={() => setShowCreateAccount(true)}
+                    onClick={() => {
+                      setIsUpgrading(false);
+                      setShowCreateAccount(true);
+                    }}
                     className="text-[12px] font-semibold text-accent hover:underline"
                   >
                     + Create Account
+                  </button>
+                ) : business.business_account &&
+                  business.business_type !== "limited_liability" &&
+                  business.business_account.tier !== "3" ? (
+                  // ── Has account + not LLC + not max tier — show upgrade ─
+                  <button
+                    onClick={() => {
+                      setIsUpgrading(true);
+                      setShowCreateAccount(true);
+                    }}
+                    className="text-[12px] font-semibold text-accent hover:underline"
+                  >
+                    ↑ Upgrade Tier
                   </button>
                 ) : undefined
               }
@@ -1169,13 +1186,23 @@ export default function BusinessDetailPage({
       {showCreateAccount && business && (
         <CreateAccountModal
           business={business}
+          isUpgrade={isUpgrading}
+          currentTier={business.business_account?.tier ?? "1"}
           onSuccess={(account) => {
             setBusiness((prev) =>
               prev ? { ...prev, business_account: account } : prev,
             );
-            showFeedback("ok", "VFD account created successfully!");
+            showFeedback(
+              "ok",
+              isUpgrading
+                ? "Account upgraded successfully!"
+                : "Account created successfully!",
+            );
           }}
-          onClose={() => setShowCreateAccount(false)}
+          onClose={() => {
+            setShowCreateAccount(false);
+            setIsUpgrading(false);
+          }}
         />
       )}
     </div>
