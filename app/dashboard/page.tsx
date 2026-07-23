@@ -470,7 +470,7 @@ export default function AdminDashboard() {
                         {business.business_name.charAt(0).toUpperCase()}
                       </div>
 
-                      {/* Info */}
+                      {/* Infos */}
                       <div className="flex-1 min-w-0">
                         <p className="text-[14px] font-semibold text-gray-900 truncate">
                           {business.business_name}
