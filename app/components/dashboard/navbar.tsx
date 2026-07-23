@@ -1,75 +1,96 @@
 "use client";
 
-import { User, authService } from "@/app/lib/auth";
 import { useState, useEffect } from "react";
-import { IoMenuOutline } from "react-icons/io5";
-import { LuPanelLeftClose } from "react-icons/lu";
 import { RiNotification4Line, RiSearch2Line } from "react-icons/ri";
 
-export function Navbar({
-  onMenuClick,
-  onSidebarToggle,
-}: {
-  onMenuClick: () => void;
-  onSidebarToggle?: () => void;
-}) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [business, setBusiness] = useState<any>(null);
-  const [summary, setSummary] = useState<any>(null);
+interface AdminInfo {
+  name: string;
+  role_label: string;
+}
 
-  const fetchUser = async () => {
-    try {
-      const { isAuthenticated, user, business, summary } =
-        await authService.checkAuth();
+export function Navbar() {
+  const [admin, setAdmin] = useState<AdminInfo | null>(null);
 
-      if (isAuthenticated && user) {
-        setUser(user);
-        setBusiness(business);
-        setSummary(summary);
-        // console.log("Business fetched:", business);
-      }
-    } catch (error) {
-      console.error("Failed to fetch user:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
   useEffect(() => {
-    fetchUser();
+    (async () => {
+      try {
+        const res = await fetch("/api/user");
+        if (!res.ok) return;
+        const json = await res.json();
+        setAdmin(json.data);
+      } catch (e) {
+        console.error("Failed to fetch admin:", e);
+      }
+    })();
   }, []);
+
+  // ── Current page title from URL ────────────────────────
+  const getPageTitle = (): string => {
+    if (typeof window === "undefined") return "Dashboard";
+    const path = window.location.pathname;
+    if (path === "/dashboard") return "Dashboard";
+    if (path.includes("/businesses")) return "Businesses";
+    if (path.includes("/transactions")) return "Transactions";
+    if (path.includes("/users")) return "Users";
+    if (path.includes("/admins")) return "Manage Admins";
+    if (path.includes("/activity-logs")) return "Activity Logs";
+    return "Dashboard";
+  };
+
   return (
-    <nav className="w-full h-16 flex justify-between items-center px-4 border-b bg-dashboard-background">
-      {/* Left */}
-      <div className="flex items-center gap-4">
-        {/* Desktop collapse button */}
-        <LuPanelLeftClose
-          onClick={onSidebarToggle}
-          size={20}
-          className="hidden md:flex cursor-pointer hover:text-primary"
-        />
-
-        {/* Mobile Hamburger - Opens Full Screen Drawer */}
-        <IoMenuOutline
-          size={24}
-          className="md:hidden cursor-pointer"
-          onClick={onMenuClick}
-        />
-
-        <p className="text-[20px] leading-7 font-bold truncate max-w-50 sm:max-w-none">
-          Hello, <span className="capitalize">{business?.business_name}</span>
+    <nav className="w-full h-16 flex justify-between items-center px-4 sm:px-6 border-b bg-dashboard-background shrink-0">
+      {/* ── Left — page title ─────────────────────────── */}
+      <div className="flex items-center gap-3 min-w-0">
+        <p className="text-[18px] font-bold text-gray-900 truncate">
+          {getPageTitle()}
         </p>
       </div>
 
-      {/* Right */}
-      {/* <div className="flex items-center gap-4">
-        <div className="h-9 w-9 rounded-full flex items-center justify-center bg-dashboard-hover cursor-pointer">
-          <RiSearch2Line size={20} />
-        </div>
-        <div className="h-9 w-9 rounded-full flex items-center justify-center bg-dashboard-hover cursor-pointer">
-          <RiNotification4Line size={20} />
-        </div>
-      </div> */}
+      {/* ── Right — actions + admin info ──────────────── */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Search */}
+        <button
+          type="button"
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+          title="Search"
+        >
+          <RiSearch2Line size={18} />
+        </button>
+
+        {/* Notifications */}
+        <button
+          type="button"
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors relative"
+          title="Notifications"
+        >
+          <RiNotification4Line size={18} />
+        </button>
+
+        {/* Divider */}
+        <div className="w-px h-6 bg-gray-200 hidden sm:block" />
+
+        {/* Admin info */}
+        {admin && (
+          <div className="hidden sm:flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-[12px] font-bold text-accent shrink-0">
+              {admin.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()}
+            </div>
+            <div className="leading-tight">
+              <p className="text-[13px] font-semibold text-gray-900 leading-none">
+                {admin.name}
+              </p>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                {admin.role_label}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
     </nav>
   );
 }

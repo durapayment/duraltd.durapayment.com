@@ -1,24 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const adminToken = request.cookies.get("admin_token")?.value;
+    const body = await request.json();
 
-    if (!adminToken) {
-      return NextResponse.json(
-        { status: 401, message: "Unauthorized" },
-        { status: 401 },
-      );
-    }
-
+    // ── Public route — no auth needed ──────────────────────
     const response = await fetch(
-      `${process.env.LARAVEL_API_URL}/api/admin/auth/me`,
+      `${process.env.LARAVEL_API_URL}/api/admin/auth/resend-otp`,
       {
-        method: "GET",
+        method: "POST",
         headers: {
-          Authorization: `Bearer ${adminToken}`,
+          "Content-Type": "application/json",
           Accept: "application/json",
         },
+        body: JSON.stringify(body),
         cache: "no-store",
       },
     );
@@ -26,7 +21,7 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error("Admin user route error:", error);
+    console.error("Admin resend OTP error:", error);
     return NextResponse.json(
       { status: 500, message: "Internal server error" },
       { status: 500 },

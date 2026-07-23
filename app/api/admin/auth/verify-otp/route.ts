@@ -4,9 +4,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // ── Forward login to Laravel ───────────────────────────
     const response = await fetch(
-      `${process.env.LARAVEL_API_URL}/api/admin/auth/login`, // ← fixed URL
+      `${process.env.LARAVEL_API_URL}/api/admin/auth/verify-otp`,
       {
         method: "POST",
         headers: {
@@ -19,18 +18,18 @@ export async function POST(request: NextRequest) {
     );
 
     const data = await response.json();
-
     const nextResponse = NextResponse.json(data, { status: response.status });
 
-    // ── Forward admin_token cookie from Laravel ─────────────
+    // ── Forward admin_token cookie ─────────────────────────
     const setCookieHeader = response.headers.get("set-cookie");
+    console.log("set-cookie header:", setCookieHeader);
     if (setCookieHeader) {
       nextResponse.headers.set("set-cookie", setCookieHeader);
     }
 
     return nextResponse;
   } catch (error) {
-    console.error("Admin login error:", error);
+    console.error("Admin verify OTP error:", error);
     return NextResponse.json(
       { status: 500, message: "Internal server error" },
       { status: 500 },

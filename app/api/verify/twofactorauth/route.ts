@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
 
     // Forward login to Laravel
     const response = await fetch(
-      `${process.env.LARAVEL_API_URL}/api/verify/twofactorauth`,
+      `${process.env.LARAVEL_API_URL}/api/admin/auth/verify-otp`,
       {
         method: "POST",
         headers: {

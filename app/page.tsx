@@ -168,7 +168,7 @@ export default function LoginPage() {
   const handleResendOtp = async () => {
     setOtpError(null);
     try {
-      const response = await fetch("/api/login", {
+      const response = await fetch("/api/admin/auth/resend-otp", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -198,7 +198,7 @@ export default function LoginPage() {
     setOtpLoading(true);
     setOtpError(null);
     try {
-      const response = await fetch("/api/verify/twofactorauth", {
+      const response = await fetch("/api/admin/auth/verify-otp", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -231,15 +231,12 @@ export default function LoginPage() {
         {/* Header */}
         <div className="flex items-center gap-15 justify-between mb-4">
           <Link href={"/"} className="flex min-w-max items-center gap-2">
-            <img src="./logo.png" width={37} alt="logo" />
+            {/* <img src="./logo.png" width={37} alt="logo" /> */}
             <div className="flex flex-col">
-              <p className="text-[18px] uppercase hidden md:flex font-bold text-accent-deep whitespace-nowrap">
-                Dura Payment
+              <p className="text-[20px] uppercase hidden md:flex font-bold text-accent-deep whitespace-nowrap">
+                Dura LTD
               </p>
             </div>
-          </Link>
-          <Link href="/register" className="font-semibold">
-            Create account
           </Link>
         </div>
         <div className="flex mt-0 md:mt-10 flex-1 flex-col justify-between md:justify-start items-center">
@@ -249,7 +246,7 @@ export default function LoginPage() {
                 Welcome back
               </p>
               <p className="text-[13px]">
-                Sign in to continue to your Dura Payment account.
+                Sign in to continue to your account.
               </p>
             </div>
 
@@ -345,14 +342,6 @@ export default function LoginPage() {
                   {errors.password}
                 </p>
               )}
-              <div className="text-end">
-                <Link
-                  href="/forgot-password"
-                  className="text-[13px] mt-1 text-end font-medium"
-                >
-                  Forgot password?
-                </Link>
-              </div>
             </div>
           </div>
 
@@ -363,16 +352,6 @@ export default function LoginPage() {
               action={() => handleLoginSubmit()}
               isLoading={isLoading}
             />
-            <p className="text-center flex items-center gap-2 justify-center text-sm">
-              Don't have an account?
-              <a
-                href="/register"
-                className="text-secondary hover:text-tertiary font-medium"
-              >
-                Create account
-              </a>
-            </p>
-            <CBNBadge />
           </div>
         </div>
       </div>

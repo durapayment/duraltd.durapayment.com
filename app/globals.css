@@ -21,10 +21,10 @@
 [data-theme="light"],
 [data-theme="default"] {
   /* Theme Colors (Light Mode)s */
-  --accent: #14644c;
+  --accent: #051913;
   --accent-deep: #071d1c;
   --secondary: #03624c;
-  --tertiary: #9ca27b;
+  --tertiary: #404132;
   --accent-foreground: oklch(15% 0.03 65.55);
   --background: #ffffff;
   --dashboard-background: #f5f5f5;
@@ -71,10 +71,10 @@
 [data-theme="dark"] {
   color-scheme: dark;
   /* Theme Colors (Dark Mode) */
-  --accent: #14644c;
+  --accent: #051913;
   --accent-deep: #071d1c;
   --secondary: #03624c;
-  --tertiary: #9ca27b;
+  --tertiary: #404132;
   --accent-foreground: oklch(15% 0.03 65.55);
   --background: #060605;
   --dashboard-background: #1a1a1a;

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
     const adminToken = request.cookies.get("admin_token")?.value;
-
     if (!adminToken) {
       return NextResponse.json(
         { status: 401, message: "Unauthorized" },
@@ -11,22 +13,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const response = await fetch(
-      `${process.env.LARAVEL_API_URL}/api/admin/auth/me`,
+    const { id } = await params;
+    const body = await request.json();
+
+    const res = await fetch(
+      `${process.env.LARAVEL_API_URL}/api/admin/businesses/${id}/create-account`,
       {
-        method: "GET",
+        method: "POST",
         headers: {
           Authorization: `Bearer ${adminToken}`,
           Accept: "application/json",
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify(body),
         cache: "no-store",
       },
     );
 
-    const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (error) {
-    console.error("Admin user route error:", error);
+    console.error("Create account error:", error);
     return NextResponse.json(
       { status: 500, message: "Internal server error" },
       { status: 500 },
