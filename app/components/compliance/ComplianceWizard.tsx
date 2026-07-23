@@ -76,6 +76,7 @@ export function ComplianceWizard() {
     business_industry: "",
     registration_number: "",
     bvn: "",
+    nin: "",
     date_of_birth: "",
     website: "",
     business_address: "",
@@ -96,6 +97,7 @@ export function ComplianceWizard() {
         business_industry: d.business_industry ?? "",
         registration_number: d.registration_number ?? "",
         bvn: d.bvn ?? "",
+        nin: d.nin ?? "",
         date_of_birth: d.date_of_birth ?? "",
         website: d.website ?? "",
         business_address: d.business_address ?? "",
@@ -515,6 +517,31 @@ export function ComplianceWizard() {
               {infoForm.bvn && infoForm.bvn.length < 11 && (
                 <p className="text-[11px] text-amber-500 mt-1">
                   {11 - infoForm.bvn.length} more digits needed
+                </p>
+              )}
+            </div>
+
+            {/* NIN */}
+            <div>
+              <label className="block text-[12px] font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
+                NIN *
+              </label>
+              <input
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:border-gray-400 outline-none text-sm font-mono tracking-wider"
+                placeholder="11-digit NIN"
+                maxLength={11}
+                inputMode="numeric"
+                value={infoForm.nin}
+                onChange={(e) =>
+                  setInfoForm((f) => ({
+                    ...f,
+                    nin: e.target.value.replace(/\D/g, "").slice(0, 11),
+                  }))
+                }
+              />
+              {infoForm.nin && infoForm.nin.length < 11 && (
+                <p className="text-[11px] text-amber-500 mt-1">
+                  {11 - infoForm.nin.length} more digits needed
                 </p>
               )}
             </div>
