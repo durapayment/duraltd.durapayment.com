@@ -13,6 +13,7 @@ import {
   RiFileListLine,
   RiLogoutBoxLine,
   RiMenuLine,
+  RiSettings3Line,
   RiCloseLine,
 } from "react-icons/ri";
 import { GoChevronDown } from "react-icons/go";
@@ -92,6 +93,18 @@ const NAV_ITEMS: NavItem[] = [
     href: "/dashboard/admins",
     icon: RiUserSettingsLine,
     permission: "manage_admins",
+  },
+  {
+    label: "Settings",
+    href: "/dashboard/settings",
+    icon: RiSettings3Line,
+    children: [
+      {
+        label: "Fees",
+        href: "/dashboard/settings/fees",
+        permission: "manage_fees",
+      },
+    ],
   },
 ];
 
