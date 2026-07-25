@@ -564,12 +564,12 @@ export default function AdminDashboard() {
                     icon: RiBuilding2Line,
                     show: can("view_businesses"),
                   },
-                  // {
-                  //   label: "All Transactions",
-                  //   href: "/dashboard/transactions",
-                  //   icon: RiExchangeDollarLine,
-                  //   show: can("view_transactions"),
-                  // },
+                  {
+                    label: "All Transactions",
+                    href: "/dashboard/transactions",
+                    icon: RiExchangeDollarLine,
+                    show: can("view_transactions"),
+                  },
                   {
                     label: "Manage Admins",
                     href: "/dashboard/admins",

@@ -70,12 +70,12 @@ const NAV_ITEMS: NavItem[] = [
       },
     ],
   },
-  // {
-  //   label: "Transactions",
-  //   href: "/dashboard/transactions",
-  //   icon: RiExchangeDollarLine,
-  //   permission: "view_transactions",
-  // },
+  {
+    label: "Transactions",
+    href: "/dashboard/transactions",
+    icon: RiExchangeDollarLine,
+    permission: "view_transactions",
+  },
   // {
   //   label: "Users",
   //   href: "/dashboard/users",
