@@ -88,12 +88,12 @@ const NAV_ITEMS: NavItem[] = [
   //   icon: RiFileListLine,
   //   permission: "manage_admins",
   // },
-  // {
-  //   label: "Manage Admins",
-  //   href: "/dashboard/admins",
-  //   icon: RiUserSettingsLine,
-  //   permission: "manage_admins",
-  // },
+  {
+    label: "Manage Admins",
+    href: "/dashboard/admins",
+    icon: RiUserSettingsLine,
+    permission: "manage_admins",
+  },
   {
     label: "Settings",
     href: "/dashboard/settings",

@@ -570,12 +570,12 @@ export default function AdminDashboard() {
                   //   icon: RiExchangeDollarLine,
                   //   show: can("view_transactions"),
                   // },
-                  // {
-                  //   label: "Manage Admins",
-                  //   href: "/dashboard/admins",
-                  //   icon: RiUserAddLine,
-                  //   show: can("manage_admins"),
-                  // },
+                  {
+                    label: "Manage Admins",
+                    href: "/dashboard/admins",
+                    icon: RiUserAddLine,
+                    show: can("manage_admins"),
+                  },
                 ]
                   .filter((a) => a.show)
                   .map(({ label, href, icon: Icon }) => (
