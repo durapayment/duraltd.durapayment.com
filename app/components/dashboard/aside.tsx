@@ -76,12 +76,12 @@ const NAV_ITEMS: NavItem[] = [
     icon: RiExchangeDollarLine,
     permission: "view_transactions",
   },
-  // {
-  //   label: "Users",
-  //   href: "/dashboard/users",
-  //   icon: RiUserLine,
-  //   permission: "view_users",
-  // },
+  {
+    label: "Users",
+    href: "/dashboard/users",
+    icon: RiUserLine,
+    permission: "view_users",
+  },
   // {
   //   label: "Activity Logs",
   //   href: "/dashboard/activity-logs",
