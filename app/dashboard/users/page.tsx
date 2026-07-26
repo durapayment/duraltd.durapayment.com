@@ -432,7 +432,13 @@ export default function AdminUsersPage() {
                 </tr>
               ) : (
                 users.map((u) => (
-                  <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={u.id}
+                    onClick={() =>
+                      (window.location.href = `/dashboard/users/${u.id}`)
+                    }
+                    className="hover:bg-gray-50 transition-colors"
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-[12px] font-bold text-gray-600 shrink-0">
@@ -476,7 +482,10 @@ export default function AdminUsersPage() {
                         year: "numeric",
                       })}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td
+                      className="px-6 py-4 text-right"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {canSuspend && u.status === "active" && (
                         <button
                           onClick={() => setSuspendTarget(u)}
