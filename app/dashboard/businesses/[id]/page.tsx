@@ -354,8 +354,8 @@ function CreateAccountModal({
   business,
   onSuccess,
   onClose,
-  isUpgrade = false, // ← new prop
-  currentTier = "1", // ← new prop
+  isUpgrade = false,
+  currentTier = "1",
 }: {
   business: BusinessDetail;
   onSuccess: (account: BusinessAccount) => void;
@@ -375,44 +375,75 @@ function CreateAccountModal({
   const [error, setError] = useState<string | null>(null);
 
   const isLLC = business.business_type === "limited_liability";
+  const isBN = business.business_type === "business_name";
+  // Both LLC and Business Name route through VFD's corporate account
+  // endpoint (businessType: 'RC' vs 'BN'). Only true individuals use
+  // the tiered personal-account flow below.
+  const isCorporate = isLLC || isBN;
 
   // ── Only show tiers higher than current when upgrading ─
   const TIERS = [
     {
       value: "1" as const,
       label: "Tier 1",
-      sub: isLLC
-        ? "Corporate account — Director BVN + NIN required"
+      sub: isCorporate
+        ? isLLC
+          ? "Corporate account — Director BVN + NIN required"
+          : "Corporate account — Owner BVN + NIN required"
         : "BVN + Date of Birth · ₦50,000 daily limit",
-      available: !isUpgrade && !isLLC,
+      available: !isUpgrade && !isCorporate,
     },
     {
       value: "2" as const,
       label: "Tier 2",
       sub: "BVN + DOB + NIN · ₦200,000 daily limit",
-      available: !isLLC && (!isUpgrade || Number(currentTier) < 2),
+      available: !isCorporate && (!isUpgrade || Number(currentTier) < 2),
     },
     {
       value: "3" as const,
       label: "Tier 3",
       sub: "BVN + DOB + NIN + Address · Unlimited",
-      available: !isLLC && (!isUpgrade || Number(currentTier) < 3),
+      available: !isCorporate && (!isUpgrade || Number(currentTier) < 3),
     },
   ].filter((t) => t.available || (!isUpgrade && t.value === "1"));
 
   const checks = [
     { label: "BVN", ok: !!business.bvn, show: true },
-    { label: "Date of Birth", ok: !!business.date_of_birth, show: true },
+    {
+      label: "Date of Birth",
+      ok: !!business.date_of_birth,
+      show: !isCorporate,
+    },
     {
       label: "NIN",
       ok: !!business.nin,
-      show: (tier === "2" || tier === "3") && !isLLC,
+      show: isCorporate || tier === "2" || tier === "3",
     },
-    { label: "Address", ok: !!business.business_address, show: tier === "3" },
-    { label: "RC Number", ok: !!business.registration_number, show: isLLC },
+    {
+      label: "Address",
+      ok: !!business.business_address,
+      show: isCorporate || tier === "3",
+    },
+    {
+      label: "State",
+      ok: !!business.business_state,
+      show: isCorporate,
+    },
+    {
+      label: isBN ? "BN Number" : "RC Number",
+      ok: !!business.registration_number,
+      show: isCorporate,
+    },
+    {
+      label: "Incorporation Date",
+      ok: !!business.incorporation_date,
+      show: isCorporate,
+    },
     {
       label: "Director with BVN & NIN",
       ok: business.directors?.some((d) => !!d.bvn && !!d.nin) ?? false,
+      // Business Name has no directors step — it uses the owner's own
+      // BVN/NIN (already checked above), not a director record.
       show: isLLC,
     },
   ].filter((c) => c.show);
@@ -458,8 +489,8 @@ function CreateAccountModal({
           <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
             {isUpgrade
               ? `Upgrade from Tier ${currentTier} to a higher tier for increased transaction limits.`
-              : isLLC
-                ? "A corporate account will be created for this Limited Liability Company."
+              : isCorporate
+                ? `A corporate account will be created for this ${isBN ? "Business Name" : "Limited Liability Company"}.`
                 : "Select the account tier. Higher tiers have higher transaction limits."}
           </p>
         </div>
@@ -810,8 +841,25 @@ export default function BusinessDetailPage({
               />
               <InfoRow label="Industry" value={business.business_industry} />
               <InfoRow
-                label="Registration No."
+                label={
+                  business.registration_number_type === "BN"
+                    ? "BN Number"
+                    : business.registration_number_type === "RC"
+                      ? "RC Number"
+                      : "Registration No."
+                }
                 value={business.registration_number}
+              />
+              <InfoRow
+                label="Incorporation Date"
+                value={
+                  business.incorporation_date
+                    ? new Date(business.incorporation_date).toLocaleDateString(
+                        "en-NG",
+                        { day: "2-digit", month: "long", year: "numeric" },
+                      )
+                    : null
+                }
               />
               <InfoRow
                 label="BVN"
@@ -1039,8 +1087,9 @@ export default function BusinessDetailPage({
                   </button>
                 ) : business.business_account &&
                   business.business_type !== "limited_liability" &&
+                  business.business_type !== "business_name" &&
                   business.business_account.tier !== "3" ? (
-                  // ── Has account + not LLC + not max tier — show upgrade ─
+                  // ── Has account + not corporate + not max tier — show upgrade ─
                   <button
                     onClick={() => {
                       setIsUpgrading(true);
