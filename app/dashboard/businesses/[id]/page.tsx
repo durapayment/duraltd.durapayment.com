@@ -956,16 +956,14 @@ export default function BusinessDetailPage({
                 label="Submitted"
                 value={formatDate(business.submitted_at)}
               />
-              {business.business_description && (
-                <div className="pt-3">
-                  <p className="text-[13px] text-gray-400 mb-1">
-                    Business Description
-                  </p>
-                  <p className="text-[14px] text-gray-700 leading-relaxed">
-                    {business.business_description}
-                  </p>
-                </div>
-              )}
+              <div className="pt-3">
+                <p className="text-[13px] text-gray-400 mb-1">
+                  Business Description
+                </p>
+                <p className="text-[14px] text-gray-700 leading-relaxed">
+                  {business?.business_description}
+                </p>
+              </div>
             </SectionCard>
 
             {/* Owner Info */}
