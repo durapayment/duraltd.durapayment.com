@@ -77,6 +77,8 @@ interface BusinessDetail {
   business_name: string;
   business_type: string;
   business_industry: string | null;
+  business_description: string | null;
+  monthly_transaction_volume: string | null;
   contact_email: string;
   contact_phone: string | null;
   verification_status: string;
@@ -102,7 +104,6 @@ interface BusinessDetail {
   directors: Director[];
   business_account: BusinessAccount | null;
 }
-
 // ─────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────
@@ -126,6 +127,16 @@ const BUSINESS_TYPE_LABELS: Record<string, string> = {
   individual: "Individual",
   business_name: "Business Name",
   limited_liability: "Limited Liability",
+};
+
+const MONTHLY_VOLUME_LABELS: Record<string, string> = {
+  "0-100000": "Under ₦100,000",
+  "100000-1000000": "₦100,000 – ₦1,000,000",
+  "1000000-5000000": "₦1,000,000 – ₦5,000,000",
+  "5000000-10000000": "₦5,000,000 – ₦10,000,000",
+  "10000000-50000000": "₦10,000,000 – ₦50,000,000",
+  "50000000-100000000": "₦50,000,000 – ₦100,000,000",
+  "100000000+": "₦100,000,000+",
 };
 
 // ─────────────────────────────────────────────────────────
@@ -841,6 +852,26 @@ export default function BusinessDetailPage({
               />
               <InfoRow label="Industry" value={business.business_industry} />
               <InfoRow
+                label="Monthly Volume"
+                value={
+                  business.monthly_transaction_volume
+                    ? (MONTHLY_VOLUME_LABELS[
+                        business.monthly_transaction_volume
+                      ] ?? business.monthly_transaction_volume)
+                    : null
+                }
+              />
+              <InfoRow
+                label={
+                  business.registration_number_type === "BN"
+                    ? "BN Number"
+                    : business.registration_number_type === "RC"
+                      ? "RC Number"
+                      : "Registration No."
+                }
+                value={business.registration_number}
+              />
+              <InfoRow
                 label={
                   business.registration_number_type === "BN"
                     ? "BN Number"
@@ -932,6 +963,16 @@ export default function BusinessDetailPage({
                 label="Submitted"
                 value={formatDate(business.submitted_at)}
               />
+              {business.business_description && (
+                <div className="pt-3">
+                  <p className="text-[13px] text-gray-400 mb-1">
+                    Business Description
+                  </p>
+                  <p className="text-[14px] text-gray-700 leading-relaxed">
+                    {business.business_description}
+                  </p>
+                </div>
+              )}
             </SectionCard>
 
             {/* Owner Info */}
