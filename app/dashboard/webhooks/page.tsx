@@ -102,7 +102,7 @@ export default function WebhooksAndCallbacks() {
       try {
         const res = await fetch("/api/user");
         if (res.status === 401) {
-          window.location.href = "/login";
+          window.location.href = "/";
           return;
         }
         if (!res.ok) throw new Error("Failed to load account data");

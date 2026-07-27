@@ -396,7 +396,7 @@ export default function AccountsPage() {
       try {
         const res = await fetch("/api/accounts/business");
         if (res.status === 401) {
-          window.location.href = "/login";
+          window.location.href = "/";
           return;
         }
         const json = await res.json();
@@ -430,7 +430,7 @@ export default function AccountsPage() {
 
       const res = await fetch(`/api/accounts/customers?${params.toString()}`);
       if (res.status === 401) {
-        window.location.href = "/login";
+        window.location.href = "/";
         return;
       }
       const json = await res.json();

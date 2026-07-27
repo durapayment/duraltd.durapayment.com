@@ -238,7 +238,7 @@ export default function CustomersPage() {
       const res = await fetch(`/api/customers?${params.toString()}`);
 
       if (res.status === 401) {
-        window.location.href = "/login";
+        window.location.href = "/";
         return;
       }
 

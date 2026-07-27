@@ -22,12 +22,12 @@ async function request(
 async function getAccessToken(): Promise<string> {
   const res = await fetch("/api/token");
   if (!res.ok) {
-    window.location.href = "/login";
+    window.location.href = "/";
     throw new Error("Unauthenticated");
   }
   const { token } = await res.json();
   if (!token) {
-    window.location.href = "/login";
+    window.location.href = "/";
     throw new Error("No token");
   }
   return token;
