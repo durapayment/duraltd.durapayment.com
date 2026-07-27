@@ -961,7 +961,9 @@ export default function BusinessDetailPage({
                   Business Description
                 </p>
                 <p className="text-[14px] text-gray-700 leading-relaxed">
-                  {business?.business_description}
+                  {business?.business_description ?? (
+                    <span className="text-gray-300 font-normal">—</span>
+                  )}
                 </p>
               </div>
             </SectionCard>
