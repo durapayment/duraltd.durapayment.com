@@ -1081,7 +1081,7 @@ export default function BusinessDetailPage({
                 <div className="flex items-center justify-between border-t border-gray-50 pt-3">
                   <p className="text-[13px] text-gray-400">Compliance Step</p>
                   <p className="text-[14px] font-semibold text-gray-900">
-                    {business.compliance_step} / 4
+                    {business.compliance_step} / 3
                   </p>
                 </div>
                 {business.reviewed_by && (
