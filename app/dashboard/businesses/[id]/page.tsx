@@ -763,6 +763,14 @@ export default function BusinessDetailPage({
                   </button>
                 </>
               )}
+              {status === "verified" && (
+                <a
+                  href={`/dashboard/businesses/${business.id}/pricing`}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 text-[13px] font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Manage Pricing
+                </a>
+              )}
               {(status === "verified" || status === "under_review") && (
                 <button
                   onClick={() => setModalAction("suspend")}
