@@ -453,7 +453,7 @@ export default function AdminTransactionsPage() {
                   <tr key={i}>
                     {Array.from({ length: 7 }).map((_, j) => (
                       <td key={j} className="px-6 py-4">
-                        <div className="h-4 bg-gray-100 rounded animate-pulse w-full max-w-[100px]" />
+                        <div className="h-4 bg-gray-100 rounded animate-pulse w-full max-w-25" />
                       </td>
                     ))}
                   </tr>
@@ -487,7 +487,7 @@ export default function AdminTransactionsPage() {
                       </p>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-gray-800 truncate max-w-[160px]">
+                      <p className="text-gray-800 truncate max-w-40">
                         {t.customer ?? "—"}
                       </p>
                       <p className="text-xs text-gray-400 truncate max-w-[160px]">

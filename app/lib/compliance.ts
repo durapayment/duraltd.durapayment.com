@@ -88,6 +88,7 @@ export interface ComplianceData {
   registration_number: string | null;
   bvn: string | null;
   website: string | null;
+  incorporation_date: string | null;
   business_address: string | null;
   business_city: string | null;
   business_state: string | null;

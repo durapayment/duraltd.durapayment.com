@@ -437,7 +437,7 @@ export default function AdminUsersPage() {
                     onClick={() =>
                       (window.location.href = `/dashboard/users/${u.id}`)
                     }
-                    className="hover:bg-gray-50 transition-colors"
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">

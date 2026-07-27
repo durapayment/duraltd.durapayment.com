@@ -90,6 +90,8 @@ interface BusinessDetail {
   nin: string | null;
   date_of_birth: string | null;
   registration_number: string | null;
+  registration_number_type: "RC" | "BN" | null;
+  incorporation_date: string | null;
   website: string | null;
   business_address: string | null;
   business_city: string | null;
