@@ -118,9 +118,12 @@ function formatDate(d: string | null): string {
   });
 }
 
-function formatCurrency(amount: number | null): string {
-  if (!amount) return "Unlimited";
-  return "₦" + amount.toLocaleString("en-NG");
+function formatCurrency(amount: number | string | null): string {
+  if (amount === null || amount === undefined || amount === "")
+    return "Unlimited";
+  const num = typeof amount === "string" ? parseFloat(amount) : amount;
+  if (!num || isNaN(num)) return "Unlimited";
+  return "₦" + num.toLocaleString("en-US");
 }
 
 const BUSINESS_TYPE_LABELS: Record<string, string> = {
@@ -860,16 +863,6 @@ export default function BusinessDetailPage({
                       ] ?? business.monthly_transaction_volume)
                     : null
                 }
-              />
-              <InfoRow
-                label={
-                  business.registration_number_type === "BN"
-                    ? "BN Number"
-                    : business.registration_number_type === "RC"
-                      ? "RC Number"
-                      : "Registration No."
-                }
-                value={business.registration_number}
               />
               <InfoRow
                 label={
