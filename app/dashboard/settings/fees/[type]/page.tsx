@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, use } from "react";
 import {
   RiExchangeDollarLine,
+  RiPercentLine,
   RiRefreshLine,
   RiAlertLine,
   RiHistoryLine,
@@ -10,9 +11,14 @@ import {
   RiArrowLeftLine,
 } from "react-icons/ri";
 
+type FeeKind = "flat" | "percentage";
+
 interface FeeHistoryEntry {
   id: string;
-  fee: number;
+  fee_type: FeeKind;
+  fee: number | null;
+  percentage_rate: number | null;
+  percentage_cap: number | null;
   note: string | null;
   created_by: string | null;
   created_at: string;
@@ -26,6 +32,10 @@ function fmt(amount: number): string {
   return "₦" + amount.toLocaleString("en-NG", { minimumFractionDigits: 2 });
 }
 
+function fmtRate(rate: number): string {
+  return `${parseFloat(rate.toFixed(4))}%`;
+}
+
 export default function FeeDetailPage({
   params,
 }: {
@@ -35,12 +45,20 @@ export default function FeeDetailPage({
 
   const [admin, setAdmin] = useState<AdminInfo | null>(null);
   const [label, setLabel] = useState("");
+  const [feeType, setFeeType] = useState<FeeKind>("flat");
   const [currentFee, setCurrentFee] = useState<number | null>(null);
+  const [currentRate, setCurrentRate] = useState<number | null>(null);
+  const [currentCap, setCurrentCap] = useState<number | null>(null);
   const [history, setHistory] = useState<FeeHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Flat-fee form
   const [newFee, setNewFee] = useState("");
+  // Percentage form
+  const [newRate, setNewRate] = useState("");
+  const [newCap, setNewCap] = useState("");
+
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -75,7 +93,10 @@ export default function FeeDetailPage({
       if (!res.ok)
         throw new Error(json.message ?? "Failed to load fee settings");
       setLabel(json.data.label);
+      setFeeType(json.data.fee_type ?? "flat");
       setCurrentFee(json.data.current);
+      setCurrentRate(json.data.current_rate);
+      setCurrentCap(json.data.current_cap);
       setHistory(json.data.history ?? []);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load fee settings");
@@ -93,10 +114,31 @@ export default function FeeDetailPage({
     setSaveError(null);
     setSaveSuccess(false);
 
-    const parsed = parseFloat(newFee);
-    if (!newFee || isNaN(parsed) || parsed < 0) {
-      setSaveError("Enter a valid fee amount.");
-      return;
+    let body: Record<string, unknown>;
+
+    if (feeType === "flat") {
+      const parsed = parseFloat(newFee);
+      if (!newFee || isNaN(parsed) || parsed < 0) {
+        setSaveError("Enter a valid fee amount.");
+        return;
+      }
+      body = { fee: parsed, note: note || undefined };
+    } else {
+      const parsedRate = parseFloat(newRate);
+      if (!newRate || isNaN(parsedRate) || parsedRate < 0 || parsedRate > 100) {
+        setSaveError("Enter a valid rate between 0 and 100.");
+        return;
+      }
+      const parsedCap = newCap ? parseFloat(newCap) : null;
+      if (newCap && (isNaN(parsedCap as number) || (parsedCap as number) < 0)) {
+        setSaveError("Enter a valid cap amount, or leave it blank for no cap.");
+        return;
+      }
+      body = {
+        percentage_rate: parsedRate,
+        percentage_cap: parsedCap ?? undefined,
+        note: note || undefined,
+      };
     }
 
     setSaving(true);
@@ -104,12 +146,14 @@ export default function FeeDetailPage({
       const res = await fetch(`/api/admin/fees/${type}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fee: parsed, note: note || undefined }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message ?? "Failed to update fee");
 
       setNewFee("");
+      setNewRate("");
+      setNewCap("");
       setNote("");
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -135,6 +179,8 @@ export default function FeeDetailPage({
       </div>
     );
   }
+
+  const canSubmit = feeType === "flat" ? !!newFee : !!newRate;
 
   return (
     <div className="w-full flex flex-col items-center pt-6 pb-12">
@@ -181,11 +227,27 @@ export default function FeeDetailPage({
             <div className="bg-accent rounded-2xl border border-accent p-5 flex flex-col gap-4 text-white">
               <div className="flex items-center justify-between">
                 <p className="text-[12px] uppercase tracking-widest font-medium text-white/60">
-                  Current Fee
+                  {feeType === "percentage" ? "Current Rate" : "Current Fee"}
                 </p>
+                {feeType === "percentage" ? (
+                  <RiPercentLine size={16} className="text-white/60" />
+                ) : (
+                  <RiExchangeDollarLine size={16} className="text-white/60" />
+                )}
               </div>
               {loading ? (
                 <div className="h-8 w-28 rounded bg-white/10 animate-pulse" />
+              ) : feeType === "percentage" ? (
+                <>
+                  <p className="text-[28px] font-bold leading-none tracking-tight">
+                    {currentRate !== null ? fmtRate(currentRate) : "—"}
+                  </p>
+                  {currentCap !== null && (
+                    <p className="text-[13px] text-white/60">
+                      Capped at {fmt(currentCap)}
+                    </p>
+                  )}
+                </>
               ) : (
                 <p className="text-[28px] font-bold leading-none tracking-tight">
                   {currentFee !== null ? fmt(currentFee) : "—"}
@@ -198,24 +260,63 @@ export default function FeeDetailPage({
               className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-4"
             >
               <h3 className="text-[15px] font-semibold text-gray-900">
-                Set New Fee
+                {feeType === "percentage" ? "Set New Rate" : "Set New Fee"}
               </h3>
 
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
-                  New Fee (₦)
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={newFee}
-                  onChange={(e) =>
-                    setNewFee(e.target.value.replace(/[^0-9.]/g, ""))
-                  }
-                  placeholder="e.g. 15.00"
-                  className="w-full px-4 py-2.5 rounded-md border border-gray-200 bg-gray-50 focus:border-gray-400 focus:bg-white text-sm outline-none transition-all"
-                />
-              </div>
+              {feeType === "percentage" ? (
+                <>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+                      Rate (%)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={newRate}
+                      onChange={(e) =>
+                        setNewRate(e.target.value.replace(/[^0-9.]/g, ""))
+                      }
+                      placeholder="e.g. 1.5"
+                      className="w-full px-4 py-2.5 rounded-md border border-gray-200 bg-gray-50 focus:border-gray-400 focus:bg-white text-sm outline-none transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+                      Cap (₦){" "}
+                      <span className="text-gray-400 normal-case font-normal">
+                        (optional — leave blank for no cap)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={newCap}
+                      onChange={(e) =>
+                        setNewCap(e.target.value.replace(/[^0-9.]/g, ""))
+                      }
+                      placeholder="e.g. 2000"
+                      className="w-full px-4 py-2.5 rounded-md border border-gray-200 bg-gray-50 focus:border-gray-400 focus:bg-white text-sm outline-none transition-all"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+                    New Fee (₦)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={newFee}
+                    onChange={(e) =>
+                      setNewFee(e.target.value.replace(/[^0-9.]/g, ""))
+                    }
+                    placeholder="e.g. 15.00"
+                    className="w-full px-4 py-2.5 rounded-md border border-gray-200 bg-gray-50 focus:border-gray-400 focus:bg-white text-sm outline-none transition-all"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
@@ -248,7 +349,7 @@ export default function FeeDetailPage({
 
               <button
                 type="submit"
-                disabled={saving || !newFee}
+                disabled={saving || !canSubmit}
                 className="w-full py-2.5 rounded-xl mt-5 bg-accent text-white text-sm font-semibold hover:bg-tertiary transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
               >
                 {saving ? (
@@ -256,6 +357,8 @@ export default function FeeDetailPage({
                     <RiRefreshLine size={14} className="animate-spin" />
                     Saving…
                   </>
+                ) : feeType === "percentage" ? (
+                  "Update Rate"
                 ) : (
                   "Update Fee"
                 )}
@@ -302,7 +405,19 @@ export default function FeeDetailPage({
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-[14px] font-semibold text-gray-900">
-                        {fmt(entry.fee)}
+                        {entry.fee_type === "percentage"
+                          ? entry.percentage_rate !== null
+                            ? fmtRate(entry.percentage_rate)
+                            : "—"
+                          : entry.fee !== null
+                            ? fmt(entry.fee)
+                            : "—"}
+                        {entry.fee_type === "percentage" &&
+                          entry.percentage_cap !== null && (
+                            <span className="text-[12px] font-normal text-gray-400 ml-2">
+                              capped at {fmt(entry.percentage_cap)}
+                            </span>
+                          )}
                       </p>
                       <p className="text-[12px] text-gray-400 mt-0.5 truncate">
                         {entry.note || "No note provided"}

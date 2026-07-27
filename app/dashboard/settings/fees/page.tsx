@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   RiExchangeDollarLine,
+  RiPercentLine,
   RiRefreshLine,
   RiAlertLine,
   RiArrowRightLine,
@@ -12,7 +13,10 @@ interface FeeType {
   type: string;
   label: string;
   description: string;
-  current_fee: number;
+  fee_type: "flat" | "percentage";
+  current_fee: number | null;
+  current_rate: number | null;
+  current_cap: number | null;
   has_been_set: boolean;
   last_updated: string | null;
 }
@@ -23,6 +27,11 @@ interface AdminInfo {
 
 function fmt(amount: number): string {
   return "₦" + amount.toLocaleString("en-NG", { minimumFractionDigits: 2 });
+}
+
+function fmtRate(rate: number): string {
+  // Trim trailing zeros so 1.5000 shows as "1.5%", not "1.5000%"
+  return `${parseFloat(rate.toFixed(4))}%`;
 }
 
 export default function FeesListPage() {
@@ -141,10 +150,14 @@ export default function FeesListPage() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                      <RiExchangeDollarLine
-                        size={16}
-                        className="text-gray-500"
-                      />
+                      {f.fee_type === "percentage" ? (
+                        <RiPercentLine size={16} className="text-gray-500" />
+                      ) : (
+                        <RiExchangeDollarLine
+                          size={16}
+                          className="text-gray-500"
+                        />
+                      )}
                     </div>
                     <RiArrowRightLine
                       size={14}
@@ -159,14 +172,35 @@ export default function FeesListPage() {
                       {f.description}
                     </p>
                   </div>
-                  <p className="text-[22px] font-bold text-gray-900 mt-1">
-                    {fmt(f.current_fee)}
-                    {!f.has_been_set && (
-                      <span className="text-[11px] font-normal text-gray-400 ml-2">
-                        default
-                      </span>
-                    )}
-                  </p>
+
+                  {f.fee_type === "percentage" ? (
+                    <div className="mt-1">
+                      <p className="text-[22px] font-bold text-gray-900">
+                        {f.current_rate !== null
+                          ? fmtRate(f.current_rate)
+                          : "—"}
+                        {!f.has_been_set && (
+                          <span className="text-[11px] font-normal text-gray-400 ml-2">
+                            default
+                          </span>
+                        )}
+                      </p>
+                      {f.current_cap !== null && (
+                        <p className="text-[12px] text-gray-400 mt-0.5">
+                          Capped at {fmt(f.current_cap)}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-[22px] font-bold text-gray-900 mt-1">
+                      {f.current_fee !== null ? fmt(f.current_fee) : "—"}
+                      {!f.has_been_set && (
+                        <span className="text-[11px] font-normal text-gray-400 ml-2">
+                          default
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </a>
               ))}
         </div>
