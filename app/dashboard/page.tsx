@@ -85,7 +85,7 @@ interface AdminInfo {
 function formatCurrency(amount: number): string {
   if (amount >= 1_000_000_000)
     return "₦" + (amount / 1_000_000_000).toFixed(1) + "B";
-  if (amount >= 1_000_000) return "₦" + (amount / 1_000_000).toFixed(1) + "M";
+  if (amount >= 1_000_000) return "₦" + (amount / 1_000_000).toFixed(1) + "K";
   if (amount >= 1_000) return "₦" + (amount / 1_000).toFixed(1) + "K";
   return "₦" + amount.toLocaleString("en-NG");
 }
@@ -318,8 +318,14 @@ export default function AdminDashboard() {
     })();
   }, []);
 
-  // ── Fetch analytics ────────────────────────────────────
+  // ── Fetch analytics — only once we know the admin
+  //    actually has permission, so we never even attempt
+  //    (and never error-display) a 403 for everyone else ──
   const fetchAnalytics = useCallback(async () => {
+    if (!admin?.permissions.includes("view_analytics")) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -336,7 +342,7 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [admin]);
 
   // ── Fetch KYC queue ────────────────────────────────────
   const fetchKycQueue = useCallback(async () => {
@@ -372,16 +378,21 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  // ── Only fetch analytics once admin permissions are known ──
   useEffect(() => {
-    fetchAnalytics();
+    if (admin) fetchAnalytics();
+  }, [admin, fetchAnalytics]);
+
+  useEffect(() => {
     fetchKycQueue();
     fetchComplaintsQueue();
-  }, [fetchAnalytics, fetchKycQueue, fetchComplaintsQueue]);
+  }, [fetchKycQueue, fetchComplaintsQueue]);
 
   const b = analytics?.businesses;
   const u = analytics?.users;
   const t = analytics?.transactions;
   const c = analytics?.complaints;
+  const canViewAnalytics = can("view_analytics");
 
   // ─────────────────────────────────────────────────────
   // Render
@@ -417,8 +428,9 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* ── Error ───────────────────────────────────── */}
-        {error && (
+        {/* ── Error — only ever shown for a genuine failure
+             on an endpoint the admin does have permission for ── */}
+        {canViewAnalytics && error && (
           <div className="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-xl text-[14px] text-gray-700">
             <RiAlertLine size={16} className="shrink-0 text-gray-400" />
             {error}
@@ -431,9 +443,10 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── Stat Cards ──────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {can("approve_kyc") && (
+        {/* ── Stat Cards — entire section hidden for
+             non-superadmins rather than erroring ──────── */}
+        {canViewAnalytics && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             <StatCard
               label="KYC Pending"
               value={b?.under_review.toLocaleString() ?? "—"}
@@ -442,18 +455,13 @@ export default function AdminDashboard() {
               loading={loading}
               accent
             />
-          )}
-          {can("handle_disputes") && (
             <StatCard
               label="Complaints Pending"
               value={c?.pending.toLocaleString() ?? "—"}
               sub={`${c?.reviewing ?? 0} in review · ${c?.total ?? 0} total`}
               icon={RiFlagLine}
               loading={loading}
-              accent={!can("approve_kyc")}
             />
-          )}
-          {can("view_businesses") && (
             <StatCard
               label="Total Businesses"
               value={b?.total.toLocaleString() ?? "—"}
@@ -461,8 +469,6 @@ export default function AdminDashboard() {
               icon={RiBuilding2Line}
               loading={loading}
             />
-          )}
-          {can("view_transactions") && (
             <StatCard
               label="Transaction Volume"
               value={t ? formatCurrency(t.volume) : "—"}
@@ -470,17 +476,8 @@ export default function AdminDashboard() {
               icon={RiExchangeDollarLine}
               loading={loading}
             />
-          )}
-          {can("view_users") && (
-            <StatCard
-              label="New Users"
-              value={u?.this_month.toLocaleString() ?? "—"}
-              sub={`${u?.total.toLocaleString() ?? 0} total users`}
-              icon={RiUserAddLine}
-              loading={loading}
-            />
-          )}
-        </div>
+          </div>
+        )}
 
         {/* ── Two column layout ────────────────────────── */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -713,8 +710,9 @@ export default function AdminDashboard() {
 
           {/* ── Right column (1/3 width) ─────────────── */}
           <div className="flex flex-col gap-5">
-            {/* Verification Breakdown */}
-            {can("view_businesses") && (
+            {/* Verification Breakdown — depends on analytics, so
+                same gate as the stat cards above ─────────────── */}
+            {canViewAnalytics && (
               <div className="bg-white rounded-2xl border border-gray-100 p-5">
                 <h3 className="text-[15px] font-semibold text-gray-900 mb-5">
                   Verification Breakdown
