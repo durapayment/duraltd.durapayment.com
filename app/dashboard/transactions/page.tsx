@@ -9,6 +9,9 @@ import {
   RiArrowUpLine,
   RiArrowDownLine,
   RiFlagLine,
+  RiLockUnlockLine,
+  RiCloseCircleLine,
+  RiCheckLine,
 } from "react-icons/ri";
 
 // ─────────────────────────────────────────────────────────
@@ -34,6 +37,7 @@ interface Txn {
   customer_email: string | null;
   payment_method: string | null;
   is_flagged: boolean;
+  is_settled: boolean;
   date: string;
   time: string;
 }
@@ -191,6 +195,8 @@ export default function AdminTransactionsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actioningId, setActioningId] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
@@ -283,8 +289,94 @@ export default function AdminTransactionsPage() {
     fetchTransactions();
   }, [fetchTransactions]);
 
+  const showSuccess = (msg: string) => {
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(null), 3000);
+  };
+
+  const flagTransaction = async (id: string) => {
+    const reason = prompt("Reason for flagging this transaction:");
+    if (!reason) return;
+    setActioningId(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/transactions/${id}/flag`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      const json = await res.json();
+      if (!res.ok)
+        throw new Error(json.message ?? "Failed to flag transaction");
+      showSuccess("Transaction flagged and held from settlement");
+      await fetchTransactions();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to flag transaction");
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  const releaseTransaction = async (id: string) => {
+    setActioningId(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/transactions/${id}/resolve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "release" }),
+      });
+      const json = await res.json();
+      if (!res.ok)
+        throw new Error(json.message ?? "Failed to release transaction");
+      showSuccess(
+        "Transaction released — eligible for the next settlement run",
+      );
+      await fetchTransactions();
+    } catch (e: unknown) {
+      setError(
+        e instanceof Error ? e.message : "Failed to release transaction",
+      );
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  const reverseTransaction = async (id: string) => {
+    if (
+      !confirm(
+        "Reverse this transaction? This removes it from the merchant's ledger permanently. You'll still need to manually initiate the refund transfer to the payer.",
+      )
+    )
+      return;
+    setActioningId(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/transactions/${id}/resolve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reverse" }),
+      });
+      const json = await res.json();
+      if (!res.ok)
+        throw new Error(json.message ?? "Failed to reverse transaction");
+      showSuccess(
+        "Transaction reversed — remember to initiate the outbound refund manually",
+      );
+      await fetchTransactions();
+    } catch (e: unknown) {
+      setError(
+        e instanceof Error ? e.message : "Failed to reverse transaction",
+      );
+    } finally {
+      setActioningId(null);
+    }
+  };
+
   const canView =
     currentAdmin?.permissions.includes("view_transactions") ?? false;
+  const canDispute =
+    currentAdmin?.permissions.includes("handle_disputes") ?? false;
   const totalPages = meta?.last_page ?? 1;
 
   if (currentAdmin && !canView) {
@@ -328,6 +420,13 @@ export default function AdminTransactionsPage() {
             Refresh
           </button>
         </div>
+
+        {successMsg && (
+          <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm">
+            <RiCheckLine size={15} />
+            {successMsg}
+          </div>
+        )}
 
         {error && (
           <div className="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-xl text-[14px] text-gray-700">
@@ -445,13 +544,16 @@ export default function AdminTransactionsPage() {
                 <th className="px-6 py-3 font-medium">Amount</th>
                 <th className="px-6 py-3 font-medium">Status</th>
                 <th className="px-6 py-3 font-medium">Date</th>
+                {canDispute && (
+                  <th className="px-6 py-3 font-medium text-right">Actions</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: canDispute ? 8 : 7 }).map((_, j) => (
                       <td key={j} className="px-6 py-4">
                         <div className="h-4 bg-gray-100 rounded animate-pulse w-full max-w-25" />
                       </td>
@@ -461,7 +563,7 @@ export default function AdminTransactionsPage() {
               ) : transactions.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={canDispute ? 8 : 7}
                     className="text-center py-14 text-gray-400 text-sm"
                   >
                     <div className="flex flex-col items-center gap-2">
@@ -519,6 +621,50 @@ export default function AdminTransactionsPage() {
                     <td className="px-6 py-4 text-gray-500 text-nowrap">
                       {t.date} · {t.time}
                     </td>
+                    {canDispute && (
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {!t.is_flagged && !t.is_settled && (
+                            <button
+                              onClick={() => flagTransaction(t.id)}
+                              disabled={actioningId === t.id}
+                              title="Flag / hold from settlement"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40"
+                            >
+                              <RiFlagLine size={12} />
+                              Flag
+                            </button>
+                          )}
+                          {t.is_flagged && (
+                            <>
+                              <button
+                                onClick={() => releaseTransaction(t.id)}
+                                disabled={actioningId === t.id}
+                                title="Release hold"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-green-50 hover:text-green-600 hover:border-green-200 transition-colors disabled:opacity-40"
+                              >
+                                <RiLockUnlockLine size={12} />
+                                Release
+                              </button>
+                              <button
+                                onClick={() => reverseTransaction(t.id)}
+                                disabled={actioningId === t.id}
+                                title="Reverse"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors disabled:opacity-40"
+                              >
+                                <RiCloseCircleLine size={12} />
+                                Reverse
+                              </button>
+                            </>
+                          )}
+                          {t.is_settled && !t.is_flagged && (
+                            <span className="text-xs text-gray-300">
+                              Settled
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
