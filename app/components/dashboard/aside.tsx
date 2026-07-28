@@ -15,6 +15,7 @@ import {
   RiMenuLine,
   RiSettings3Line,
   RiCloseLine,
+  RiFlagLine,
 } from "react-icons/ri";
 import { GoChevronDown } from "react-icons/go";
 
@@ -75,6 +76,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/dashboard/transactions",
     icon: RiExchangeDollarLine,
     permission: "view_transactions",
+  },
+  {
+    label: "Complaints",
+    href: "/dashboard/complaints",
+    icon: RiFlagLine,
+    permission: "handle_disputes",
   },
   {
     label: "Users",
