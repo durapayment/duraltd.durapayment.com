@@ -90,6 +90,8 @@ interface BusinessDetail {
   risk_level: string;
   bvn: string | null;
   nin: string | null;
+  settlement_type: "instant" | "delayed";
+  settlement_type_updated_at: string | null;
   date_of_birth: string | null;
   registration_number: string | null;
   registration_number_type: "RC" | "BN" | null;
@@ -628,6 +630,8 @@ export default function BusinessDetailPage({
     msg: string;
   } | null>(null);
 
+  const [settlementUpdating, setSettlementUpdating] = useState(false);
+
   // ── Resolve params ─────────────────────────────────────
   useEffect(() => {
     params.then(({ id }) => setId(id));
@@ -710,6 +714,30 @@ export default function BusinessDetailPage({
 
   const status = business.verification_status;
   const docs = Object.values(business.documents ?? {});
+
+  const handleSettlementTypeChange = async (type: "instant" | "delayed") => {
+    if (!id) return;
+    setSettlementUpdating(true);
+    try {
+      const res = await fetch(`/api/admin/businesses/${id}/settlement-type`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settlement_type: type }),
+      });
+      const json = await res.json();
+      if (!res.ok)
+        throw new Error(json.message ?? "Failed to update settlement type");
+      showFeedback("ok", json.message);
+      await fetchBusiness(id);
+    } catch (e: unknown) {
+      showFeedback(
+        "err",
+        e instanceof Error ? e.message : "Failed to update settlement type",
+      );
+    } finally {
+      setSettlementUpdating(false);
+    }
+  };
 
   // ─────────────────────────────────────────────────────
   // Render
@@ -1089,7 +1117,7 @@ export default function BusinessDetailPage({
                 <div className="flex items-center justify-between border-t border-gray-50 pt-3">
                   <p className="text-[13px] text-gray-400">Compliance Step</p>
                   <p className="text-[14px] font-semibold text-gray-900">
-                    {business.compliance_step} / 3
+                    {business.compliance_step} / 4
                   </p>
                 </div>
                 {business.reviewed_by && (
@@ -1108,6 +1136,49 @@ export default function BusinessDetailPage({
                     </div>
                   </>
                 )}
+
+                <div className="border-t border-gray-100 pt-3 mt-1">
+                  <p className="text-[13px] text-gray-400 mb-2">
+                    Settlement Type
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSettlementTypeChange("instant")}
+                      disabled={
+                        settlementUpdating ||
+                        business.settlement_type === "instant"
+                      }
+                      className={clsx(
+                        "flex-1 py-2 rounded-lg text-[13px] font-medium border transition-colors disabled:cursor-default",
+                        business.settlement_type === "instant"
+                          ? "bg-gray-900 text-white border-gray-900"
+                          : "border-gray-200 text-gray-600 hover:bg-gray-50",
+                      )}
+                    >
+                      Instant
+                    </button>
+                    <button
+                      onClick={() => handleSettlementTypeChange("delayed")}
+                      disabled={
+                        settlementUpdating ||
+                        business.settlement_type === "delayed"
+                      }
+                      className={clsx(
+                        "flex-1 py-2 rounded-lg text-[13px] font-medium border transition-colors disabled:cursor-default",
+                        business.settlement_type === "delayed"
+                          ? "bg-gray-900 text-white border-gray-900"
+                          : "border-gray-200 text-gray-600 hover:bg-gray-50",
+                      )}
+                    >
+                      Next-Day
+                    </button>
+                  </div>
+                  {business.settlement_type_updated_at && (
+                    <p className="text-[11px] text-gray-400 mt-2">
+                      Changed {formatDate(business.settlement_type_updated_at)}
+                    </p>
+                  )}
+                </div>
               </div>
             </SectionCard>
 
