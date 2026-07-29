@@ -5,38 +5,30 @@ export async function GET(
   { params }: { params: Promise<{ uuid: string }> },
 ) {
   try {
-    const accessToken = request.cookies.get("access_token")?.value;
-
-    if (!accessToken) {
+    const { uuid } = await params;
+    const adminToken = request.cookies.get("admin_token")?.value;
+    if (!adminToken) {
       return NextResponse.json(
         { status: 401, message: "Unauthorized" },
         { status: 401 },
       );
     }
 
-    const { uuid } = await params;
-
-    const response = await fetch(
-      `${process.env.LARAVEL_API_URL}/api/transactions/${uuid}`,
+    const res = await fetch(
+      `${process.env.LARAVEL_API_URL}/api/admin/transactions/${uuid}`,
       {
-        method: "GET",
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${adminToken}`,
           Accept: "application/json",
         },
         cache: "no-store",
       },
     );
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      return NextResponse.json(data, { status: response.status });
-    }
-
-    return NextResponse.json(data);
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (error) {
-    console.error("Transaction detail error:", error);
+    console.error("Fetch transaction detail error:", error);
     return NextResponse.json(
       { status: 500, message: "Internal server error" },
       { status: 500 },

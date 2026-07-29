@@ -12,6 +12,7 @@ import {
   RiLockUnlockLine,
   RiCloseCircleLine,
   RiCheckLine,
+  RiCloseLine,
 } from "react-icons/ri";
 
 // ─────────────────────────────────────────────────────────
@@ -40,6 +41,33 @@ interface Txn {
   is_settled: boolean;
   date: string;
   time: string;
+}
+
+interface TxnDetail extends Txn {
+  fees: unknown[];
+  provider_fee: number | null;
+  exchange_rate: number | null;
+  target_currency: string | null;
+  target_amount: number | null;
+  payment_method_details: Record<string, unknown> | null;
+  payer_details: Record<string, unknown> | null;
+  payee_details: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+  failure_reason: string | null;
+  flag_reason: string | null;
+  compliance_approved: boolean | null;
+  compliance_approved_by: string | null;
+  compliance_approved_at: string | null;
+  settled_at: string | null;
+  processed_at: string | null;
+  cancelled_at: string | null;
+  external_transaction_id: string | null;
+  external_gateway: string | null;
+  session_id: string | null;
+  payer_name: string | null;
+  payer_email: string | null;
+  payee_name: string | null;
+  payee_email: string | null;
 }
 
 interface PaginationMeta {
@@ -80,6 +108,17 @@ function fmtCompact(amount: number): string {
   if (amount >= 1_000_000) return "₦" + (amount / 1_000_000).toFixed(1) + "M";
   if (amount >= 1_000) return "₦" + (amount / 1_000).toFixed(1) + "K";
   return "₦" + amount.toLocaleString("en-NG");
+}
+
+function fmtDateTime(d: string | null): string {
+  if (!d) return "—";
+  return new Date(d).toLocaleString("en-NG", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -186,6 +225,237 @@ function StatCard({
 }
 
 // ─────────────────────────────────────────────────────────
+// Detail Row (for the modal)
+// ─────────────────────────────────────────────────────────
+function DetailRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="flex justify-between items-start gap-4 py-2.5 border-b border-gray-50 last:border-0">
+      <span className="text-sm text-gray-500 shrink-0">{label}</span>
+      <span className="text-sm text-gray-900 text-right">
+        {value ?? <span className="text-gray-300">—</span>}
+      </span>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Transaction Detail Modal
+// ─────────────────────────────────────────────────────────
+function TransactionDetailModal({
+  id,
+  onClose,
+}: {
+  id: string;
+  onClose: () => void;
+}) {
+  const [txn, setTxn] = useState<TxnDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/admin/transactions/${id}`);
+        const json = await res.json();
+        if (!res.ok)
+          throw new Error(json.message ?? "Failed to load transaction");
+        setTxn(json.data);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Failed to load transaction");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [id]);
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+          <h2 className="font-semibold text-[16px] text-gray-900">
+            Transaction Details
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <RiCloseLine size={20} />
+          </button>
+        </div>
+
+        <div className="px-5 py-5">
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-5 bg-gray-100 rounded animate-pulse"
+                />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700">
+              <RiAlertLine size={16} className="shrink-0 text-gray-400" />
+              {error}
+            </div>
+          ) : txn ? (
+            <>
+              <div className="text-center py-4 bg-gray-50 rounded-2xl mb-4">
+                <p className="text-xs text-gray-500 mb-1">
+                  {txn.direction === "credit"
+                    ? "Amount Received"
+                    : "Amount Sent"}
+                </p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {fmt(txn.amount, txn.currency)}
+                </p>
+                <div className="mt-2 flex justify-center">
+                  <span
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                      STATUS_STYLES[txn.status] ?? "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {txn.status.charAt(0).toUpperCase() + txn.status.slice(1)}
+                  </span>
+                  {txn.is_flagged && (
+                    <span className="ml-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700">
+                      <RiFlagLine size={11} /> Flagged
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1 mt-4">
+                Overview
+              </p>
+              <DetailRow
+                label="Reference"
+                value={
+                  <span className="font-mono text-xs">{txn.reference}</span>
+                }
+              />
+              <DetailRow label="Business" value={txn.business.name} />
+              <DetailRow
+                label="Type"
+                value={<span className="capitalize">{txn.type}</span>}
+              />
+              <DetailRow label="Payment Method" value={txn.payment_method} />
+              <DetailRow label="Date" value={`${txn.date} · ${txn.time}`} />
+
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1 mt-4">
+                Financials
+              </p>
+              <DetailRow label="Amount" value={fmt(txn.amount, txn.currency)} />
+              <DetailRow
+                label="Our Fee"
+                value={fmt(txn.fee_amount, txn.currency)}
+              />
+              <DetailRow
+                label="VFD Provider Fee"
+                value={
+                  txn.provider_fee !== null
+                    ? fmt(txn.provider_fee, txn.currency)
+                    : null
+                }
+              />
+              <DetailRow
+                label="Net Amount"
+                value={fmt(txn.net_amount, txn.currency)}
+              />
+              {txn.provider_fee !== null && (
+                <DetailRow
+                  label="Margin (our fee − VFD cost)"
+                  value={fmt(txn.fee_amount - txn.provider_fee, txn.currency)}
+                />
+              )}
+
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1 mt-4">
+                Parties
+              </p>
+              <DetailRow label="Payer" value={txn.payer_name} />
+              <DetailRow label="Payer Email" value={txn.payer_email} />
+              <DetailRow label="Payee" value={txn.payee_name} />
+              <DetailRow label="Payee Email" value={txn.payee_email} />
+
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1 mt-4">
+                Settlement & Compliance
+              </p>
+              <DetailRow
+                label="Settled"
+                value={txn.is_settled ? "Yes" : "No"}
+              />
+              <DetailRow
+                label="Settled At"
+                value={fmtDateTime(txn.settled_at)}
+              />
+              <DetailRow
+                label="Processed At"
+                value={fmtDateTime(txn.processed_at)}
+              />
+              {txn.flag_reason && (
+                <DetailRow label="Flag Reason" value={txn.flag_reason} />
+              )}
+              {txn.failure_reason && (
+                <DetailRow label="Failure Reason" value={txn.failure_reason} />
+              )}
+              {txn.compliance_approved_by && (
+                <DetailRow
+                  label="Compliance Approved By"
+                  value={txn.compliance_approved_by}
+                />
+              )}
+              {txn.compliance_approved_at && (
+                <DetailRow
+                  label="Compliance Approved At"
+                  value={fmtDateTime(txn.compliance_approved_at)}
+                />
+              )}
+
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1 mt-4">
+                Provider
+              </p>
+              <DetailRow label="Gateway" value={txn.external_gateway} />
+              <DetailRow
+                label="External Reference"
+                value={
+                  txn.external_transaction_id ? (
+                    <span className="font-mono text-xs">
+                      {txn.external_transaction_id}
+                    </span>
+                  ) : null
+                }
+              />
+              <DetailRow
+                label="Session ID"
+                value={
+                  txn.session_id ? (
+                    <span className="font-mono text-xs">{txn.session_id}</span>
+                  ) : null
+                }
+              />
+            </>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
 // Main Page
 // ─────────────────────────────────────────────────────────
 export default function AdminTransactionsPage() {
@@ -197,6 +467,7 @@ export default function AdminTransactionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [selectedTxnId, setSelectedTxnId] = useState<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
@@ -574,7 +845,11 @@ export default function AdminTransactionsPage() {
                 </tr>
               ) : (
                 transactions.map((t) => (
-                  <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={t.id}
+                    onClick={() => setSelectedTxnId(t.id)}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
                     <td className="px-6 py-4">
                       <p className="font-mono text-xs text-gray-700 flex items-center gap-1.5">
                         {t.reference}
@@ -622,7 +897,10 @@ export default function AdminTransactionsPage() {
                       {t.date} · {t.time}
                     </td>
                     {canDispute && (
-                      <td className="px-6 py-4 text-right">
+                      <td
+                        className="px-6 py-4 text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="flex items-center justify-end gap-1.5">
                           {!t.is_flagged && !t.is_settled && (
                             <button
@@ -701,6 +979,13 @@ export default function AdminTransactionsPage() {
           </div>
         )}
       </div>
+
+      {selectedTxnId && (
+        <TransactionDetailModal
+          id={selectedTxnId}
+          onClose={() => setSelectedTxnId(null)}
+        />
+      )}
     </div>
   );
 }
