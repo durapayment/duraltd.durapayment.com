@@ -44,6 +44,12 @@ interface Analytics {
     reviewing: number;
     total: number;
   };
+  revenue: {
+    total_vfd_fees_today: number;
+    total_vfd_fees_this_month: number;
+    total_dura_revenue: number;
+    net_revenue: number;
+  };
 }
 
 interface KYCBusiness {
@@ -70,6 +76,27 @@ interface ComplaintQueueItem {
     business: string | null;
   } | null;
   created_at: string;
+}
+
+interface FeeTransaction {
+  id: string;
+  reference: string;
+  type: string;
+  business: { id: string; name: string } | null;
+  amount: number;
+  fee_amount: number;
+  provider_fee: number | null;
+  net_amount: number;
+  currency: string;
+  created_at: string;
+}
+
+interface TransactionDetail extends FeeTransaction {
+  status: string;
+  description: string | null;
+  metadata: Record<string, any> | null;
+  external_transaction_id: string | null;
+  completed_at: string | null;
 }
 
 interface AdminInfo {
@@ -105,6 +132,13 @@ const BUSINESS_TYPE_LABELS: Record<string, string> = {
   individual: "Individual",
   business_name: "Business Name",
   limited_liability: "Limited Liability",
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  payment: "Inflow",
+  transfer: "Payout",
+  refund: "Refund",
+  fee: "Fee",
 };
 
 const MATCH_STYLES: Record<
@@ -283,6 +317,152 @@ function VerificationRow({
 }
 
 // ─────────────────────────────────────────────────────────
+// Transaction Detail Modal
+// ─────────────────────────────────────────────────────────
+function TransactionDetailModal({
+  transaction,
+  loading,
+  onClose,
+}: {
+  transaction: TransactionDetail | null;
+  loading: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white">
+          <h3 className="text-[16px] font-semibold text-gray-900">
+            Transaction Detail
+          </h3>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-gray-50 text-gray-400"
+          >
+            <RiCloseLine size={16} />
+          </button>
+        </div>
+
+        {loading || !transaction ? (
+          <div className="p-6 space-y-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-4 bg-gray-100 rounded animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="p-6 flex flex-col gap-4">
+            <div>
+              <p className="text-[12px] text-gray-400 uppercase tracking-wide">
+                Reference
+              </p>
+              <p className="text-[14px] font-medium text-gray-900 mt-0.5">
+                {transaction.reference}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-[12px] text-gray-400 uppercase tracking-wide">
+                  Type
+                </p>
+                <p className="text-[14px] font-medium text-gray-900 mt-0.5">
+                  {TYPE_LABELS[transaction.type] ?? transaction.type}
+                </p>
+              </div>
+              <div>
+                <p className="text-[12px] text-gray-400 uppercase tracking-wide">
+                  Status
+                </p>
+                <p className="text-[14px] font-medium text-gray-900 mt-0.5 capitalize">
+                  {transaction.status}
+                </p>
+              </div>
+              <div>
+                <p className="text-[12px] text-gray-400 uppercase tracking-wide">
+                  Business
+                </p>
+                <p className="text-[14px] font-medium text-gray-900 mt-0.5">
+                  {transaction.business?.name ?? "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[12px] text-gray-400 uppercase tracking-wide">
+                  Date
+                </p>
+                <p className="text-[14px] font-medium text-gray-900 mt-0.5">
+                  {new Date(transaction.created_at).toLocaleString("en-NG")}
+                </p>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-100 pt-4 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <p className="text-[13px] text-gray-500">Transaction Amount</p>
+                <p className="text-[14px] font-semibold text-gray-900">
+                  {formatCurrency(transaction.amount)}
+                </p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-[13px] text-gray-500">Our Fee (Revenue)</p>
+                <p className="text-[14px] font-semibold text-green-700">
+                  {formatCurrency(transaction.fee_amount)}
+                </p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-[13px] text-gray-500">VFD Fee (Cost)</p>
+                <p className="text-[14px] font-semibold text-red-600">
+                  {transaction.provider_fee !== null
+                    ? formatCurrency(transaction.provider_fee)
+                    : "—"}
+                </p>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+                <p className="text-[13px] font-medium text-gray-700">
+                  Net Margin
+                </p>
+                <p className="text-[14px] font-bold text-gray-900">
+                  {formatCurrency(
+                    transaction.fee_amount - (transaction.provider_fee ?? 0),
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {transaction.description && (
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-[12px] text-gray-400 uppercase tracking-wide">
+                  Description
+                </p>
+                <p className="text-[13px] text-gray-600 mt-1">
+                  {transaction.description}
+                </p>
+              </div>
+            )}
+
+            {transaction.external_transaction_id && (
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-[12px] text-gray-400 uppercase tracking-wide">
+                  External Reference (VFD)
+                </p>
+                <p className="text-[13px] text-gray-600 mt-1 break-all">
+                  {transaction.external_transaction_id}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
 // Main Dashboard
 // ─────────────────────────────────────────────────────────
 export default function AdminDashboard() {
@@ -292,6 +472,14 @@ export default function AdminDashboard() {
   const [complaintsQueue, setComplaintsQueue] = useState<ComplaintQueueItem[]>(
     [],
   );
+  const [feeTransactions, setFeeTransactions] = useState<FeeTransaction[]>([]);
+  const [feeTransactionsLoading, setFeeTransactionsLoading] = useState(true);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<TransactionDetail | null>(null);
+  const [transactionDetailLoading, setTransactionDetailLoading] =
+    useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [kycLoading, setKycLoading] = useState(true);
   const [complaintsLoading, setComplaintsLoading] = useState(true);
@@ -378,10 +566,50 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // ── Only fetch analytics once admin permissions are known ──
+  // ── Fetch VFD-fee-bearing transactions ─────────────────
+  const fetchFeeTransactions = useCallback(async () => {
+    if (!admin?.permissions.includes("view_analytics")) {
+      setFeeTransactionsLoading(false);
+      return;
+    }
+    setFeeTransactionsLoading(true);
+    try {
+      const res = await fetch(
+        "/api/admin/transactions?has_provider_fee=1&per_page=8",
+      );
+      if (!res.ok) return;
+      const json = await res.json();
+      setFeeTransactions(json.data ?? []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setFeeTransactionsLoading(false);
+    }
+  }, [admin]);
+
+  // ── Open transaction detail modal ──────────────────────
+  const openTransactionDetail = useCallback(async (id: string) => {
+    setModalOpen(true);
+    setTransactionDetailLoading(true);
+    try {
+      const res = await fetch(`/api/admin/transactions/${id}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      setSelectedTransaction(json.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTransactionDetailLoading(false);
+    }
+  }, []);
+
+  // ── Only fetch analytics/fee-transactions once admin permissions are known ──
   useEffect(() => {
-    if (admin) fetchAnalytics();
-  }, [admin, fetchAnalytics]);
+    if (admin) {
+      fetchAnalytics();
+      fetchFeeTransactions();
+    }
+  }, [admin, fetchAnalytics, fetchFeeTransactions]);
 
   useEffect(() => {
     fetchKycQueue();
@@ -389,7 +617,6 @@ export default function AdminDashboard() {
   }, [fetchKycQueue, fetchComplaintsQueue]);
 
   const b = analytics?.businesses;
-  const u = analytics?.users;
   const t = analytics?.transactions;
   const c = analytics?.complaints;
   const canViewAnalytics = can("view_analytics");
@@ -417,6 +644,7 @@ export default function AdminDashboard() {
               fetchAnalytics();
               fetchKycQueue();
               fetchComplaintsQueue();
+              fetchFeeTransactions();
             }}
             className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[13px] text-gray-500 hover:bg-gray-50 hover:text-accent transition-colors"
           >
@@ -475,6 +703,55 @@ export default function AdminDashboard() {
               sub={`${formatCurrency(t?.volume_month ?? 0)} this month`}
               icon={RiExchangeDollarLine}
               loading={loading}
+            />
+          </div>
+        )}
+
+        {/* ── Revenue Stat Cards ───────────────────────── */}
+        {canViewAnalytics && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <StatCard
+              label="VFD Fees Today"
+              value={
+                analytics
+                  ? formatCurrency(analytics.revenue.total_vfd_fees_today)
+                  : "—"
+              }
+              sub="Cost VFD charges our corporate account"
+              icon={RiExchangeDollarLine}
+              loading={loading}
+            />
+            <StatCard
+              label="VFD Fees This Month"
+              value={
+                analytics
+                  ? formatCurrency(analytics.revenue.total_vfd_fees_this_month)
+                  : "—"
+              }
+              sub="Month-to-date cost"
+              icon={RiExchangeDollarLine}
+              loading={loading}
+            />
+            <StatCard
+              label="Total Dura Revenue"
+              value={
+                analytics
+                  ? formatCurrency(analytics.revenue.total_dura_revenue)
+                  : "—"
+              }
+              sub="What we charge merchants, all-time"
+              icon={RiExchangeDollarLine}
+              loading={loading}
+            />
+            <StatCard
+              label="Net Revenue"
+              value={
+                analytics ? formatCurrency(analytics.revenue.net_revenue) : "—"
+              }
+              sub="Revenue minus VFD's cost to us"
+              icon={RiExchangeDollarLine}
+              loading={loading}
+              accent
             />
           </div>
         )}
@@ -706,6 +983,86 @@ export default function AdminDashboard() {
                 )}
               </div>
             )}
+
+            {/* VFD Fees by Transaction */}
+            {canViewAnalytics && (
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <RiExchangeDollarLine size={17} className="text-gray-400" />
+                    <h2 className="text-[16px] font-semibold text-gray-900">
+                      VFD Fees by Transaction
+                    </h2>
+                  </div>
+                  <a
+                    href="/dashboard/transactions?has_provider_fee=1"
+                    className="text-[13px] text-gray-400 hover:text-accent flex items-center gap-1 transition-colors"
+                  >
+                    View all <RiArrowRightLine size={13} />
+                  </a>
+                </div>
+
+                {feeTransactionsLoading ? (
+                  <div className="divide-y divide-gray-50">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-4 px-6 py-4"
+                      >
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-gray-100 rounded animate-pulse w-36" />
+                          <div className="h-3 bg-gray-100 rounded animate-pulse w-24" />
+                        </div>
+                        <div className="h-4 w-16 bg-gray-100 rounded animate-pulse" />
+                      </div>
+                    ))}
+                  </div>
+                ) : feeTransactions.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-14 text-center">
+                    <RiCheckboxCircleLine
+                      size={28}
+                      className="text-gray-300 mb-3"
+                    />
+                    <p className="text-[15px] font-semibold text-gray-700">
+                      No fees recorded yet
+                    </p>
+                    <p className="text-[13px] text-gray-400 mt-1">
+                      VFD-charged transactions will show up here
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-50">
+                    {feeTransactions.map((txn) => (
+                      <button
+                        key={txn.id}
+                        onClick={() => openTransactionDetail(txn.id)}
+                        className="w-full flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors group text-left"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[14px] font-semibold text-gray-900 truncate">
+                            {txn.business?.name ?? "—"}
+                          </p>
+                          <p className="text-[12px] text-gray-400 mt-0.5 truncate">
+                            {TYPE_LABELS[txn.type] ?? txn.type} ·{" "}
+                            {txn.reference}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-[13px] font-semibold text-red-600">
+                            -{formatCurrency(txn.provider_fee ?? 0)}
+                          </p>
+                          <p className="text-[11px] text-gray-400">VFD fee</p>
+                        </div>
+                        <RiArrowRightLine
+                          size={14}
+                          className="text-gray-300 group-hover:text-accent transition-colors shrink-0"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* ── Right column (1/3 width) ─────────────── */}
@@ -800,6 +1157,17 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {modalOpen && (
+        <TransactionDetailModal
+          transaction={selectedTransaction}
+          loading={transactionDetailLoading}
+          onClose={() => {
+            setModalOpen(false);
+            setSelectedTransaction(null);
+          }}
+        />
+      )}
     </div>
   );
 }
