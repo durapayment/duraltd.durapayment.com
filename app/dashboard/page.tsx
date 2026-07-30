@@ -84,8 +84,9 @@ interface FeeTransaction {
   type: string;
   business: { id: string; name: string } | null;
   amount: number;
-  fee_amount: number;
-  provider_fee: number | null;
+  fee_amount: number; // total: our margin + VFD's cost (+ stamp, for transfers)
+  margin_amount: number; // our cut ONLY — what actually gets swept to the corporate account
+  provider_fee: number | null; // VFD's real cost, tracked for bookkeeping
   net_amount: number;
   currency: string;
   created_at: string;
@@ -409,13 +410,16 @@ function TransactionDetailModal({
                 </p>
               </div>
               <div className="flex items-center justify-between">
-                <p className="text-[13px] text-gray-500">Our Fee (Revenue)</p>
-                <p className="text-[14px] font-semibold text-green-700">
+                <p className="text-[13px] text-gray-500">Total Fee Charged</p>
+                <p className="text-[14px] font-semibold text-gray-900">
                   {formatCurrency(transaction.fee_amount)}
                 </p>
               </div>
               <div className="flex items-center justify-between">
-                <p className="text-[13px] text-gray-500">VFD Fee (Cost)</p>
+                <p className="text-[13px] text-gray-500">
+                  VFD Cost{" "}
+                  <span className="text-gray-400">(passed through)</span>
+                </p>
                 <p className="text-[14px] font-semibold text-red-600">
                   {transaction.provider_fee !== null
                     ? formatCurrency(transaction.provider_fee)
@@ -424,12 +428,10 @@ function TransactionDetailModal({
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-gray-50">
                 <p className="text-[13px] font-medium text-gray-700">
-                  Net Margin
+                  Our Margin
                 </p>
-                <p className="text-[14px] font-bold text-gray-900">
-                  {formatCurrency(
-                    transaction.fee_amount - (transaction.provider_fee ?? 0),
-                  )}
+                <p className="text-[14px] font-bold text-green-700">
+                  {formatCurrency(transaction.margin_amount)}
                 </p>
               </div>
             </div>
@@ -1048,10 +1050,12 @@ export default function AdminDashboard() {
                           </p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-[13px] font-semibold text-red-600">
-                            -{formatCurrency(txn.provider_fee ?? 0)}
+                          <p className="text-[13px] font-semibold text-green-700">
+                            +{formatCurrency(txn.margin_amount)}
                           </p>
-                          <p className="text-[11px] text-gray-400">VFD fee</p>
+                          <p className="text-[11px] text-gray-400">
+                            our margin · {formatCurrency(txn.fee_amount)} total
+                          </p>
                         </div>
                         <RiArrowRightLine
                           size={14}
