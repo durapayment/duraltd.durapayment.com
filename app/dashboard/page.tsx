@@ -20,6 +20,8 @@ import clsx from "clsx";
 // ─────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────
+type Period = "today" | "7d" | "30d" | "365d" | "all";
+
 interface Analytics {
   businesses: {
     total: number;
@@ -36,8 +38,7 @@ interface Analytics {
   transactions: {
     total: number;
     this_month: number;
-    volume: number;
-    volume_month: number;
+    volume: number; // respects the selected period
   };
   complaints: {
     pending: number;
@@ -45,9 +46,9 @@ interface Analytics {
     total: number;
   };
   revenue: {
-    total_vfd_fees_today: number;
-    total_vfd_fees_this_month: number;
-    total_dura_revenue: number;
+    period: Period;
+    vfd_fees: number;
+    dura_revenue: number;
     net_revenue: number;
   };
 }
@@ -134,6 +135,14 @@ const BUSINESS_TYPE_LABELS: Record<string, string> = {
   business_name: "Business Name",
   limited_liability: "Limited Liability",
 };
+
+const PERIOD_OPTIONS: { value: Period; label: string }[] = [
+  { value: "today", label: "Today" },
+  { value: "7d", label: "Last 7 days" },
+  { value: "30d", label: "Last 30 days" },
+  { value: "365d", label: "Last 365 days" },
+  { value: "all", label: "All time" },
+];
 
 const TYPE_LABELS: Record<string, string> = {
   payment: "Inflow",
@@ -476,6 +485,7 @@ export default function AdminDashboard() {
   );
   const [feeTransactions, setFeeTransactions] = useState<FeeTransaction[]>([]);
   const [feeTransactionsLoading, setFeeTransactionsLoading] = useState(true);
+  const [period, setPeriod] = useState<Period>("today");
   const [selectedTransaction, setSelectedTransaction] =
     useState<TransactionDetail | null>(null);
   const [transactionDetailLoading, setTransactionDetailLoading] =
@@ -519,7 +529,7 @@ export default function AdminDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/analytics");
+      const res = await fetch(`/api/admin/analytics?period=${period}`);
       if (res.status === 401) {
         window.location.href = "/";
         return;
@@ -532,7 +542,7 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [admin]);
+  }, [admin, period]);
 
   // ── Fetch KYC queue ────────────────────────────────────
   const fetchKycQueue = useCallback(async () => {
@@ -702,46 +712,55 @@ export default function AdminDashboard() {
             <StatCard
               label="Transaction Volume"
               value={t ? formatCurrency(t.volume) : "—"}
-              sub={`${formatCurrency(t?.volume_month ?? 0)} this month`}
+              sub={`${PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? "Today"}`}
               icon={RiExchangeDollarLine}
               loading={loading}
             />
           </div>
         )}
 
-        {/* ── Revenue Stat Cards ───────────────────────── */}
+        {/* ── Period selector — governs every money metric below.
+             Business/user/complaint counts above are unaffected. ──── */}
         {canViewAnalytics && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="flex items-center gap-2 -mb-2">
+            <span className="text-[13px] text-gray-400 mr-1">
+              Revenue period:
+            </span>
+            {PERIOD_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setPeriod(opt.value)}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors",
+                  period === opt.value
+                    ? "bg-accent text-white"
+                    : "text-gray-500 hover:bg-gray-100",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ── Revenue Stat Cards — all three reflect the selected period ── */}
+        {canViewAnalytics && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             <StatCard
-              label="VFD Fees Today"
+              label="VFD Fees"
               value={
-                analytics
-                  ? formatCurrency(analytics.revenue.total_vfd_fees_today)
-                  : "—"
+                analytics ? formatCurrency(analytics.revenue.vfd_fees) : "—"
               }
-              sub="Cost VFD charges our corporate account"
-              icon={RiExchangeDollarLine}
-              loading={loading}
-            />
-            <StatCard
-              label="VFD Fees This Month"
-              value={
-                analytics
-                  ? formatCurrency(analytics.revenue.total_vfd_fees_this_month)
-                  : "—"
-              }
-              sub="Month-to-date cost"
+              sub="Cost VFD charges us for this period"
               icon={RiExchangeDollarLine}
               loading={loading}
             />
             <StatCard
               label="Total Dura Revenue"
               value={
-                analytics
-                  ? formatCurrency(analytics.revenue.total_dura_revenue)
-                  : "—"
+                analytics ? formatCurrency(analytics.revenue.dura_revenue) : "—"
               }
-              sub="What we charge merchants, all-time"
+              sub="What we earned, this period"
               icon={RiExchangeDollarLine}
               loading={loading}
             />
@@ -750,7 +769,7 @@ export default function AdminDashboard() {
               value={
                 analytics ? formatCurrency(analytics.revenue.net_revenue) : "—"
               }
-              sub="Revenue minus VFD's cost to us"
+              sub="Revenue minus VFD's cost, this period"
               icon={RiExchangeDollarLine}
               loading={loading}
               accent
