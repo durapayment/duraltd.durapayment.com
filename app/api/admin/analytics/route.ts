@@ -10,16 +10,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const res = await fetch(
-      `${process.env.LARAVEL_API_URL}/api/admin/analytics`,
-      {
-        headers: {
-          Authorization: `Bearer ${adminToken}`,
-          Accept: "application/json",
-        },
-        cache: "no-store",
+    // ── Forward any query params (period, etc.) straight through ──
+    const { searchParams } = new URL(request.url);
+    const queryString = searchParams.toString();
+    const url = `${process.env.LARAVEL_API_URL}/api/admin/analytics${queryString ? `?${queryString}` : ""}`;
+
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        Accept: "application/json",
       },
-    );
+      cache: "no-store",
+    });
 
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
