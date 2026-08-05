@@ -1233,6 +1233,8 @@ export default function BusinessDetailPage({
                 </div>
               </SectionCard>
             )}
+
+            <BusinessTransactions businessId={business.id} />
           </div>
 
           {/* ── Right (1/3) ──────────────────────────── */}
@@ -1504,7 +1506,6 @@ export default function BusinessDetailPage({
             </SectionCard>
           </div>
         </div>
-        <BusinessTransactions businessId={business.id} />
       </div>
 
       {/* ── Modals ──────────────────────────────────────── */}
