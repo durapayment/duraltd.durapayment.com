@@ -14,6 +14,7 @@ import {
   RiBuilding2Line,
   RiShieldCheckLine,
   RiBankLine,
+  RiExchangeDollarLine,
 } from "react-icons/ri";
 import { useState, useEffect } from "react";
 import clsx from "clsx";
@@ -105,6 +106,11 @@ interface BusinessDetail {
   documents: Record<string, DocumentInfo>;
   directors: Director[];
   business_account: BusinessAccount | null;
+  wallet_balance: number;
+  ledger_balance: number;
+  vfd_balance: number | null;
+  total_inflow: number;
+  total_outflow: number;
 }
 // ─────────────────────────────────────────────────────────
 // Helpers
@@ -607,6 +613,130 @@ function CreateAccountModal({
         </div>
       </div>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Business Transactions (paginated)
+// ─────────────────────────────────────────────────────────
+interface TxnRow {
+  id: string;
+  reference: string;
+  type: string;
+  direction: "credit" | "debit";
+  status: string;
+  amount: number;
+  net_amount: number;
+  currency: string;
+  title: string;
+  date: string;
+  time: string;
+}
+
+function BusinessTransactions({ businessId }: { businessId: string }) {
+  const [rows, setRows] = useState<TxnRow[]>([]);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+
+  const fetchPage = async (p: number) => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/transactions?business=${businessId}&page=${p}&per_page=15`,
+      );
+      const json = await res.json();
+      setRows(json.data ?? []);
+      setLastPage(json.meta?.last_page ?? 1);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPage(page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessId, page]);
+
+  return (
+    <SectionCard title="Transactions" icon={RiFileTextLine}>
+      {loading ? (
+        <div className="flex justify-center py-8">
+          <RiLoader4Line size={22} className="animate-spin text-gray-300" />
+        </div>
+      ) : rows.length === 0 ? (
+        <p className="text-[13px] text-gray-300 text-center py-6">
+          No transactions yet
+        </p>
+      ) : (
+        <>
+          <div className="overflow-x-auto -mx-5">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="text-left text-gray-400 border-b border-gray-100">
+                  <th className="px-5 py-2 font-medium">Reference</th>
+                  <th className="px-5 py-2 font-medium">Type</th>
+                  <th className="px-5 py-2 font-medium">Status</th>
+                  <th className="px-5 py-2 font-medium text-right">Amount</th>
+                  <th className="px-5 py-2 font-medium">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((txn) => (
+                  <tr key={txn.id} className="border-b border-gray-50">
+                    <td className="px-5 py-3 font-mono text-gray-700">
+                      {txn.reference}
+                    </td>
+                    <td className="px-5 py-3 capitalize text-gray-600">
+                      {txn.type}
+                    </td>
+                    <td className="px-5 py-3">
+                      <StatusBadge status={txn.status} />
+                    </td>
+                    <td
+                      className={clsx(
+                        "px-5 py-3 text-right font-semibold",
+                        txn.direction === "credit"
+                          ? "text-green-700"
+                          : "text-red-600",
+                      )}
+                    >
+                      {txn.direction === "credit" ? "+" : "-"}
+                      {formatCurrency(txn.net_amount)}
+                    </td>
+                    <td className="px-5 py-3 text-gray-400">
+                      {txn.date} {txn.time}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1.5 rounded-lg text-[13px] border border-gray-200 disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <p className="text-[12px] text-gray-400">
+              Page {page} of {lastPage}
+            </p>
+            <button
+              onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
+              disabled={page === lastPage}
+              className="px-3 py-1.5 rounded-lg text-[13px] border border-gray-200 disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        </>
+      )}
+    </SectionCard>
   );
 }
 
@@ -1285,6 +1415,45 @@ export default function BusinessDetailPage({
               )}
             </SectionCard>
 
+            <SectionCard title="Financial Overview" icon={RiExchangeDollarLine}>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-[13px] text-gray-400">Wallet Balance</p>
+                  <p className="text-[14px] font-bold text-gray-900">
+                    {formatCurrency(business.wallet_balance)}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between border-t border-gray-50 pt-3">
+                  <p className="text-[13px] text-gray-400">Ledger Balance</p>
+                  <p className="text-[13px] font-semibold text-gray-700">
+                    {formatCurrency(business.ledger_balance)}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between border-t border-gray-50 pt-3">
+                  <p className="text-[13px] text-gray-400">
+                    VFD Balance <span className="text-gray-300">(live)</span>
+                  </p>
+                  <p className="text-[13px] font-semibold text-gray-700">
+                    {business.vfd_balance !== null
+                      ? formatCurrency(business.vfd_balance)
+                      : "Unavailable"}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between border-t border-gray-100 pt-3 mt-1">
+                  <p className="text-[13px] text-gray-400">Total Inflow</p>
+                  <p className="text-[13px] font-semibold text-green-700">
+                    {formatCurrency(business.total_inflow)}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between border-t border-gray-50 pt-3">
+                  <p className="text-[13px] text-gray-400">Total Outflow</p>
+                  <p className="text-[13px] font-semibold text-red-600">
+                    {formatCurrency(business.total_outflow)}
+                  </p>
+                </div>
+              </div>
+            </SectionCard>
+
             {/* Documents */}
             <SectionCard title="Documents" icon={RiFileTextLine}>
               {docs.length === 0 ? (
@@ -1335,6 +1504,7 @@ export default function BusinessDetailPage({
             </SectionCard>
           </div>
         </div>
+        <BusinessTransactions businessId={business.id} />
       </div>
 
       {/* ── Modals ──────────────────────────────────────── */}
