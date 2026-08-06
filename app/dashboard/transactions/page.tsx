@@ -91,6 +91,20 @@ interface CurrentAdmin {
   permissions: string[];
 }
 
+interface FailedPayout {
+  id: string;
+  reference: string;
+  business: { id: string | null; name: string | null };
+  amount: number;
+  margin_amount: number;
+  net_amount: number;
+  currency: string;
+  attempts: number;
+  failure_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────
@@ -240,6 +254,133 @@ function DetailRow({
       <span className="text-sm text-gray-900 text-right">
         {value ?? <span className="text-gray-300">—</span>}
       </span>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Failed Float Payouts Panel
+// ─────────────────────────────────────────────────────────
+function FailedFloatPayoutsPanel({ canRetry }: { canRetry: boolean }) {
+  const [payouts, setPayouts] = useState<FailedPayout[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+
+  const fetchPayouts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        "/api/admin/transactions/failed-float-payouts?per_page=10",
+      );
+      if (!res.ok) return;
+      const json = await res.json();
+      setPayouts(json.data ?? []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPayouts();
+  }, [fetchPayouts]);
+
+  const retry = async (id: string) => {
+    setRetryingId(id);
+    try {
+      const res = await fetch(
+        `/api/admin/transactions/${id}/retry-float-payout`,
+        { method: "POST" },
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? "Failed to retry");
+      await fetchPayouts();
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : "Failed to retry payout");
+    } finally {
+      setRetryingId(null);
+    }
+  };
+
+  if (!loading && payouts.length === 0) {
+    return null; // nothing to show — don't clutter the page when empty
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-red-100 overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-red-100 bg-red-50/50">
+        <div className="flex items-center gap-3">
+          <RiAlertLine size={17} className="text-red-500" />
+          <h2 className="text-[16px] font-semibold text-gray-900">
+            Failed Float Payouts
+          </h2>
+          {!loading && payouts.length > 0 && (
+            <span className="px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[11px] font-semibold">
+              {payouts.length}
+            </span>
+          )}
+        </div>
+        <p className="text-[12px] text-gray-500">
+          Customer already paid — merchant not yet credited
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="divide-y divide-gray-50">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 px-6 py-4">
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-gray-100 rounded animate-pulse w-48" />
+                <div className="h-3 bg-gray-100 rounded animate-pulse w-32" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-50">
+          {payouts.map((p) => (
+            <div key={p.id} className="flex items-center gap-4 px-6 py-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-semibold text-gray-900 truncate">
+                  {p.business.name ?? "—"}
+                </p>
+                <p className="text-[12px] text-gray-400 mt-0.5 truncate">
+                  {p.reference} · {p.attempts} attempt(s)
+                </p>
+                {p.failure_reason && (
+                  <p className="text-[12px] text-red-500 mt-1">
+                    {p.failure_reason}
+                  </p>
+                )}
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-[13px] font-semibold text-gray-900">
+                  {fmt(p.net_amount, p.currency)}
+                </p>
+                <p className="text-[11px] text-gray-400">owed to merchant</p>
+              </div>
+              {canRetry && (
+                <button
+                  onClick={() => retry(p.id)}
+                  disabled={retryingId === p.id}
+                  className="shrink-0 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[12px] font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+                >
+                  {retryingId === p.id ? "Retrying…" : "Retry"}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="px-6 py-3 border-t border-gray-100 bg-gray-50">
+        <p className="text-[12px] text-gray-500">
+          Confirm the float account has been topped up before retrying —
+          otherwise this will fail again the same way.
+        </p>
+      </div>
     </div>
   );
 }
@@ -711,6 +852,10 @@ export default function AdminTransactionsPage() {
             </button>
           </div>
         )}
+
+        {/* ── Failed Float Payouts — only rendered when there's something
+             to show (self-hides when empty) ─────────────────────────── */}
+        {canView && <FailedFloatPayoutsPanel canRetry={canDispute} />}
 
         {/* ── Stat cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
