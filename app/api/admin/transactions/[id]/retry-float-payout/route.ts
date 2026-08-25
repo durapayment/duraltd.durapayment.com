@@ -1,6 +1,10 @@
+// app/api/admin/transactions/[id]/retry-float-payout/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
     const adminToken = request.cookies.get("admin_token")?.value;
     if (!adminToken) {
@@ -10,24 +14,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const queryString = searchParams.toString();
-    const url = `${process.env.LARAVEL_API_URL}/api/admin/transactions/failed-float-payouts${
-      queryString ? `?${queryString}` : ""
-    }`;
+    const { id } = await params;
 
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-        Accept: "application/json",
+    const res = await fetch(
+      `${process.env.LARAVEL_API_URL}/api/admin/transactions/${id}/retry-float-payout`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          Accept: "application/json",
+        },
+        cache: "no-store",
       },
-      cache: "no-store",
-    });
+    );
 
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
   } catch (error) {
-    console.error("Failed float payouts fetch error:", error);
+    console.error("Retry float payout error:", error);
     return NextResponse.json(
       { status: 500, message: "Internal server error" },
       { status: 500 },
