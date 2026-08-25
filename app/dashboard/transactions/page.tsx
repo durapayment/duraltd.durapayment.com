@@ -266,7 +266,7 @@ function DetailRow({
 // ─────────────────────────────────────────────────────────
 function FailedFloatPayoutsPanel({ canRetry }: { canRetry: boolean }) {
   const [payouts, setPayouts] = useState<FailedPayout[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
 
   const fetchPayouts = useCallback(async () => {
