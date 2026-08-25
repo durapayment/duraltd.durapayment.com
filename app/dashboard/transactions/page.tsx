@@ -14,6 +14,7 @@ import {
   RiCheckLine,
   RiCloseLine,
 } from "react-icons/ri";
+import clsx from "clsx";
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -194,11 +195,13 @@ function StatCard({
   label,
   value,
   icon: Icon,
+  sub,
   loading,
   accent,
 }: {
   label: string;
   value: string;
+  sub?: string;
   icon: React.ElementType;
   loading?: boolean;
   accent?: boolean;
@@ -619,6 +622,7 @@ export default function AdminTransactionsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
   const [dateRange, setDateRange] = useState("all");
+  const [specificDate, setSpecificDate] = useState(""); // yyyy-mm-dd — takes priority over dateRange when set
 
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const businessDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -668,7 +672,16 @@ export default function AdminTransactionsPage() {
       if (typeFilter !== "all") params.set("type", typeFilter);
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (methodFilter !== "all") params.set("payment_method", methodFilter);
-      if (dateRange !== "all") params.set("date_range", dateRange);
+
+      // ── A specific date takes priority over the rolling-window
+      //    filter — both map to the same date_from/date_to backend
+      //    params, just with the range collapsed to a single day. ──────
+      if (specificDate) {
+        params.set("date_from", specificDate);
+        params.set("date_to", specificDate);
+      } else if (dateRange !== "all") {
+        params.set("date_range", dateRange);
+      }
 
       const res = await fetch(`/api/admin/transactions?${params}`);
       if (res.status === 401) {
@@ -695,6 +708,7 @@ export default function AdminTransactionsPage() {
     statusFilter,
     methodFilter,
     dateRange,
+    specificDate,
   ]);
 
   useEffect(() => {
@@ -862,6 +876,15 @@ export default function AdminTransactionsPage() {
           <StatCard
             label="Total In"
             value={stats ? fmtCompact(stats.total_in) : "—"}
+            sub={
+              specificDate
+                ? new Date(specificDate).toLocaleDateString("en-NG", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : undefined
+            }
             icon={RiArrowDownLine}
             loading={loading}
             accent
@@ -908,6 +931,34 @@ export default function AdminTransactionsPage() {
             className="px-4 py-2 border border-gray-200 rounded-full text-sm outline-none focus:border-gray-400 bg-white w-48"
           />
 
+          {/* ── Specific date — overrides the rolling-window dropdown
+               below when set. Lets an admin see exactly what came in
+               on one given day. ─────────────────────────────────────── */}
+          <div className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-full bg-white">
+            <input
+              type="date"
+              value={specificDate}
+              onChange={(e) => {
+                setSpecificDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              max={new Date().toISOString().split("T")[0]}
+              className="text-sm outline-none bg-transparent"
+            />
+            {specificDate && (
+              <button
+                onClick={() => {
+                  setSpecificDate("");
+                  setCurrentPage(1);
+                }}
+                className="text-gray-400 hover:text-gray-600 text-xs"
+                title="Clear date"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
           {[
             { value: typeFilter, set: setTypeFilter, options: TYPE_OPTIONS },
             {
@@ -924,19 +975,24 @@ export default function AdminTransactionsPage() {
               value: dateRange,
               set: setDateRange,
               options: DATE_RANGE_OPTIONS,
+              disabled: !!specificDate, // a specific date takes priority
             },
           ].map((f, i) => (
             <div
               key={i}
-              className="px-3 py-2 border border-gray-200 rounded-full bg-white"
+              className={clsx(
+                "px-3 py-2 border border-gray-200 rounded-full bg-white",
+                f.disabled && "opacity-40",
+              )}
             >
               <select
                 value={f.value}
+                disabled={f.disabled}
                 onChange={(e) => {
                   f.set(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="text-sm outline-none cursor-pointer bg-transparent"
+                className="text-sm outline-none cursor-pointer bg-transparent disabled:cursor-not-allowed"
               >
                 {f.options.map((o) => (
                   <option key={o.value} value={o.value}>

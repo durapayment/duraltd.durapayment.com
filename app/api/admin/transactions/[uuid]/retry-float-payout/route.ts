@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ uuid: string }> },
 ) {
   try {
     const adminToken = request.cookies.get("admin_token")?.value;
@@ -14,10 +14,10 @@ export async function POST(
       );
     }
 
-    const { id } = await params;
+    const { uuid } = await params;
 
     const res = await fetch(
-      `${process.env.LARAVEL_API_URL}/api/admin/transactions/${id}/retry-float-payout`,
+      `${process.env.LARAVEL_API_URL}/api/admin/transactions/${uuid}/retry-float-payout`,
       {
         method: "POST",
         headers: {
